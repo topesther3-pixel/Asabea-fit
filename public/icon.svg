@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="roseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF7597"/>
+      <stop offset="100%" stop-color="#E96A8D"/>
+    </linearGradient>
+    <linearGradient id="softGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCECEF"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#E96A8D" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background Squircle with Safe-zone margin -->
+  <rect width="512" height="512" rx="128" fill="url(#roseGrad)" />
+
+  <!-- Inner Subtle Ring -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-opacity="0.25" stroke-dasharray="8 8" />
+
+  <!-- Heart + Runner / Stepping Wing Icon Silhouette in Pure White -->
+  <g filter="url(#shadow)" transform="translate(106, 106) scale(0.585)">
+    <!-- Stylized A & Runner wing motif -->
+    <path d="M256 70 C310 10, 430 30, 460 140 C485 230, 390 320, 256 430 C122 320, 27 230, 52 140 C82 30, 202 10, 256 70 Z" 
+          fill="#FFFFFF" />
+    <!-- Dynamic Step / Swoosh cut -->
+    <path d="M140 280 Q256 220 372 280 Q256 380 140 280 Z" fill="#FCECEF" />
+    <path d="M210 170 Q256 120 302 170 Q256 210 210 170 Z" fill="#E96A8D" />
+  </g>
+
+  <!-- Brand text mark -->
+  <text x="256" y="420" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="800" font-size="34" fill="#FFFFFF" letter-spacing="4">ASABEA FIT</text>
+  <text x="256" y="450" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="600" font-size="16" fill="#FCECEF" letter-spacing="2">SMALL STEPS • BIG RESULTS</text>
+</svg>

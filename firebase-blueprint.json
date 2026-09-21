@@ -1,0 +1,192 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and target wellness goals for Asabea Fit",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "startingWeight": { "type": "number" },
+        "goalWeight": { "type": "number" },
+        "currentWeight": { "type": "number" },
+        "heightCm": { "type": "number" },
+        "journeyStartDate": { "type": "string", "maxLength": 40 },
+        "waterDailyGoalMl": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 40 },
+        "updatedAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "displayName", "createdAt"]
+    },
+    "Workout": {
+      "title": "Workout",
+      "description": "Recorded walk, jog, or run activity",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["WALK", "JOG", "RUN"] },
+        "distanceKm": { "type": "number" },
+        "durationSeconds": { "type": "number" },
+        "paceMinPerKm": { "type": "string", "maxLength": 20 },
+        "calories": { "type": "number" },
+        "date": { "type": "string", "maxLength": 40 },
+        "isManual": { "type": "boolean" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "type", "durationSeconds", "date", "createdAt"]
+    },
+    "WeightEntry": {
+      "title": "WeightEntry",
+      "description": "Recorded weight measurement over time",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "weightKg": { "type": "number" },
+        "waistCm": { "type": "number" },
+        "date": { "type": "string", "maxLength": 40 },
+        "notes": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "weightKg", "date", "createdAt"]
+    },
+    "WaterLog": {
+      "title": "WaterLog",
+      "description": "Daily water intake entry in milliliters",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "amountMl": { "type": "number" },
+        "date": { "type": "string", "maxLength": 40 },
+        "timestamp": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "amountMl", "date", "timestamp"]
+    },
+    "HabitLog": {
+      "title": "HabitLog",
+      "description": "Daily habit tracking record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 40 },
+        "workout": { "type": "boolean" },
+        "water": { "type": "boolean" },
+        "healthyMeal": { "type": "boolean" },
+        "steps": { "type": "boolean" },
+        "sleep": { "type": "boolean" },
+        "noZeroDay": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "date"]
+    },
+    "FoodEntry": {
+      "title": "FoodEntry",
+      "description": "Ghana-friendly meal journal log",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "mealType": { "type": "string", "enum": ["Breakfast", "Lunch", "Dinner", "Snack"] },
+        "foodItems": { "type": "string", "maxLength": 300 },
+        "date": { "type": "string", "maxLength": 40 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "mealType", "foodItems", "date", "createdAt"]
+    },
+    "MoodLog": {
+      "title": "MoodLog",
+      "description": "Daily mood and energy entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 40 },
+        "mood": { "type": "string", "enum": ["Great", "Good", "Okay", "Low", "Exhausted"] },
+        "energy": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "createdAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "date", "mood", "energy", "createdAt"]
+    },
+    "JournalEntry": {
+      "title": "JournalEntry",
+      "description": "Personal daily reflection",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 40 },
+        "content": { "type": "string", "maxLength": 3000 },
+        "prompt": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "string", "maxLength": 40 },
+        "updatedAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "date", "content", "createdAt"]
+    },
+    "Milestone": {
+      "title": "Milestone",
+      "description": "Unlocked milestone achievement",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "milestoneKey": { "type": "string", "maxLength": 50 },
+        "unlockedAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "milestoneKey", "unlockedAt"]
+    },
+    "ProgressPhoto": {
+      "title": "ProgressPhoto",
+      "description": "Private progress photo reference",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "stage": { "type": "string", "enum": ["START", "30_DAYS", "60_DAYS", "90_DAYS"] },
+        "photoUrl": { "type": "string", "maxLength": 1000 },
+        "date": { "type": "string", "maxLength": 40 },
+        "notes": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "stage", "photoUrl", "date", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile with initial and target measurements"
+    },
+    "/workouts/{workoutId}": {
+      "schema": "Workout",
+      "description": "Logged workout activities"
+    },
+    "/weights/{weightId}": {
+      "schema": "WeightEntry",
+      "description": "Weight and waist history logs"
+    },
+    "/water/{waterId}": {
+      "schema": "WaterLog",
+      "description": "Water consumption entries"
+    },
+    "/habits/{habitId}": {
+      "schema": "HabitLog",
+      "description": "Daily habit tracking entries"
+    },
+    "/foodEntries/{foodId}": {
+      "schema": "FoodEntry",
+      "description": "Ghana-friendly nutrition logs"
+    },
+    "/moods/{moodId}": {
+      "schema": "MoodLog",
+      "description": "Daily mood and energy logs"
+    },
+    "/journalEntries/{journalId}": {
+      "schema": "JournalEntry",
+      "description": "Private daily journal entries"
+    },
+    "/milestones/{milestoneId}": {
+      "schema": "Milestone",
+      "description": "Unlocked milestone achievements"
+    },
+    "/progressPhotos/{photoId}": {
+      "schema": "ProgressPhoto",
+      "description": "Private user progress photos"
+    }
+  }
+}
