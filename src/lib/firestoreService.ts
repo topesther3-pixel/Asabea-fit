@@ -417,3 +417,42 @@ export function subscribeToUserData(
     unsubscribers.forEach((unsub) => unsub());
   };
 }
+
+// Live Location Sharing for Safe Jog
+export interface LiveLocationData {
+  userId: string;
+  workoutType: string;
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  speed?: number;
+  distanceKm: number;
+  durationSeconds: number;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export async function updateLiveWorkoutLocation(data: LiveLocationData) {
+  const path = `live_locations/${data.userId}`;
+  try {
+    await setDoc(doc(db, 'live_locations', data.userId), {
+      ...data,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function clearLiveWorkoutLocation(userId: string) {
+  const path = `live_locations/${userId}`;
+  try {
+    await setDoc(doc(db, 'live_locations', userId), {
+      isActive: false,
+      endedAt: new Date().toISOString()
+    }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+

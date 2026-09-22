@@ -27,6 +27,8 @@ export const INITIAL_PROFILE: UserProfile = {
   heightCm: 168,
   journeyStartDate: TODAY_STR,
   waterDailyGoalMl: 2500,
+  workoutHydrationReminderEnabled: true,
+  workoutHydrationReminderIntervalMin: 30,
   createdAt: new Date().toISOString()
 };
 

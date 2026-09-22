@@ -14,8 +14,20 @@ import {
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
+// Read API key securely from environment variable / secret
+const firebaseApiKey =
+  (import.meta as any).env?.VITE_FIREBASE_API_KEY ||
+  (import.meta as any).env?.FIREBASE_API_KEY ||
+  (typeof process !== 'undefined' && (process.env?.FIREBASE_API_KEY || process.env?.VITE_FIREBASE_API_KEY)) ||
+  firebaseConfig.apiKey;
+
+const resolvedConfig = {
+  ...firebaseConfig,
+  apiKey: firebaseApiKey
+};
+
 // Initialize Firebase App
-export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+export const app = getApps().length > 0 ? getApp() : initializeApp(resolvedConfig);
 
 // CRITICAL: Initialize Firestore with configured databaseId from firebase-applet-config.json
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);

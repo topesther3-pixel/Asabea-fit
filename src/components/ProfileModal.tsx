@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Check, Cloud, CloudCheck, LogIn, LogOut, ShieldCheck } from 'lucide-react';
+import { Download, Check, Cloud, CloudCheck, LogIn, LogOut, ShieldCheck, Droplets } from 'lucide-react';
 import { UserProfile } from '../types';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { User } from 'firebase/auth';
@@ -29,6 +29,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [heightCm, setHeightCm] = useState((profile.heightCm || 168).toString());
   const [waterDailyGoalMl, setWaterDailyGoalMl] = useState(profile.waterDailyGoalMl.toString());
   const [journeyStartDate, setJourneyStartDate] = useState(profile.journeyStartDate);
+  const [workoutHydrationReminderEnabled, setWorkoutHydrationReminderEnabled] = useState(
+    profile.workoutHydrationReminderEnabled !== false
+  );
+  const [workoutHydrationReminderIntervalMin, setWorkoutHydrationReminderIntervalMin] = useState<number>(
+    profile.workoutHydrationReminderIntervalMin || 30
+  );
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -66,6 +72,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       goalWeight: parseFloat(goalWeight) || 68.0,
       heightCm: parseFloat(heightCm) || 168,
       waterDailyGoalMl: parseInt(waterDailyGoalMl, 10) || 2500,
+      workoutHydrationReminderEnabled,
+      workoutHydrationReminderIntervalMin: Number(workoutHydrationReminderIntervalMin),
       journeyStartDate
     });
     setSavedSuccess(true);
@@ -262,6 +270,64 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               onChange={(e) => setJourneyStartDate(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold"
             />
+          </div>
+
+          {/* Workout Hydration Reminder Settings */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#EFF6FF] to-[#F0FDF4] border border-[#BFDBFE]/60 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-full bg-[#3B82F6]/10 flex items-center justify-center text-[#3B82F6]">
+                  <Droplets className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-[#252525]">Workout Hydration Check</h4>
+                  <p className="text-[10px] text-gray-500">Walk, Jog & Run reminders</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={workoutHydrationReminderEnabled}
+                  onChange={(e) => setWorkoutHydrationReminderEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-gray-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3B82F6]"></div>
+              </label>
+            </div>
+
+            {workoutHydrationReminderEnabled ? (
+              <div className="pt-2 border-t border-blue-100/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-gray-700">Reminder Interval</label>
+                  <span className="text-[11px] font-extrabold text-[#3B82F6]">
+                    Every {workoutHydrationReminderIntervalMin} min
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[15, 20, 30, 45].map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => setWorkoutHydrationReminderIntervalMin(mins)}
+                      className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition ${
+                        workoutHydrationReminderIntervalMin === mins
+                          ? 'bg-[#3B82F6] text-white shadow-xs'
+                          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {mins}m {mins === 30 ? '★' : ''}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-500 leading-tight">
+                  Shows a gentle banner <span className="font-semibold text-gray-700">"💧 Hydration check! Take a few sips of water."</span> and notifies in background without pausing your timer or GPS.
+                </p>
+              </div>
+            ) : (
+              <p className="text-[10px] text-gray-400 italic">
+                Hydration reminders are currently muted during active workouts.
+              </p>
+            )}
           </div>
 
           <div className="pt-2">

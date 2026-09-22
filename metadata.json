@@ -1,6 +1,6 @@
 {
   "name": "ASABEA FIT",
   "description": "Small Steps. Big Results. A personal fitness, jogging, weight-loss, and wellness journey tracker for Asabea.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["geolocation", "notifications"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Header } from './components/Header';
 import { BottomNav, TabType } from './components/BottomNav';
 import { HomeDashboard } from './components/HomeDashboard';
@@ -53,7 +53,31 @@ export function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isWorkoutActive, setIsWorkoutActive] = useState(false);
+  const [activeWorkoutInfo, setActiveWorkoutInfo] = useState<{ type: any; durationSec: number; distanceKm: number } | null>(null);
   const isMigratingRef = useRef(false);
+
+  const handleActiveWorkoutChange = useCallback(
+    (active: boolean, summary?: { type: any; durationSec: number; distanceKm: number }) => {
+      setIsWorkoutActive((prev) => (prev !== active ? active : prev));
+      if (!active) {
+        setActiveWorkoutInfo((prev) => (prev !== null ? null : prev));
+      } else if (summary) {
+        setActiveWorkoutInfo((prev) => {
+          if (
+            prev &&
+            prev.type === summary.type &&
+            prev.durationSec === summary.durationSec &&
+            prev.distanceKm === summary.distanceKm
+          ) {
+            return prev;
+          }
+          return summary;
+        });
+      }
+    },
+    []
+  );
 
   // Save to local storage whenever state changes
   useEffect(() => {
@@ -626,13 +650,19 @@ export function App() {
           />
         )}
 
-        {currentTab === 'workout' && (
+        {/* Workout Tracker - Kept mounted to ensure continuous tracking across tabs */}
+        <div style={{ display: currentTab === 'workout' ? 'block' : 'none' }}>
           <WorkoutTracker
             workouts={state.workouts}
             onSaveWorkout={handleSaveWorkout}
             onDeleteWorkout={handleDeleteWorkout}
+            userId={currentUser?.uid || 'asabea-primary'}
+            onActiveStateChange={handleActiveWorkoutChange}
+            hydrationReminderEnabled={state.profile.workoutHydrationReminderEnabled !== false}
+            hydrationReminderIntervalMin={state.profile.workoutHydrationReminderIntervalMin || 30}
+            onOpenProfileSettings={() => setShowProfileModal(true)}
           />
-        )}
+        </div>
 
         {currentTab === 'progress' && (
           <div className="space-y-6 max-w-xl mx-auto px-4 pt-2 pb-24">
@@ -741,6 +771,27 @@ export function App() {
           </div>
         )}
       </main>
+
+      {/* Floating Active Workout Banner if navigating outside Workout Tab */}
+      {isWorkoutActive && currentTab !== 'workout' && activeWorkoutInfo && (
+        <div
+          onClick={() => setCurrentTab('workout')}
+          className="fixed bottom-20 left-4 right-4 max-w-xl mx-auto z-40 bg-[#252525] text-white p-3 rounded-2xl shadow-2xl border border-gray-700/80 flex items-center justify-between cursor-pointer hover:bg-black transition animate-in slide-in-from-bottom-2"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#E96A8D] animate-ping" />
+            <div>
+              <span className="text-xs font-black block">Active {activeWorkoutInfo.type} in Progress</span>
+              <span className="text-[11px] text-gray-300 font-mono">
+                {Math.floor(activeWorkoutInfo.durationSec / 60)}:{(activeWorkoutInfo.durationSec % 60).toString().padStart(2, '0')} • {activeWorkoutInfo.distanceKm.toFixed(2)} km
+              </span>
+            </div>
+          </div>
+          <span className="text-xs font-bold text-[#E96A8D] bg-white/10 px-3 py-1.5 rounded-xl">
+            Return to Workout →
+          </span>
+        </div>
+      )}
 
       {/* Fixed Bottom Navigation for mobile-first PWA */}
       <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />

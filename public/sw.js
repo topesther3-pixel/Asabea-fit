@@ -76,3 +76,28 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Handle Notification Clicks and Actions (PAUSE / FINISH / Focus App)
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const action = event.action; // 'pause' | 'finish'
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If a window is already open, focus it and post action message
+      for (const client of clientList) {
+        if (client.url && 'focus' in client) {
+          if (action) {
+            client.postMessage({ type: 'ASABEA_WORKOUT_ACTION', action });
+          }
+          return client.focus();
+        }
+      }
+      // If no window is open, open a new window to ASABEA FIT
+      if (self.clients.openWindow) {
+        return self.clients.openWindow('/?tab=workout');
+      }
+    })
+  );
+});
+

@@ -14,8 +14,18 @@ export interface UserProfile {
   heightCm?: number; // in cm
   journeyStartDate: string; // ISO date string (YYYY-MM-DD)
   waterDailyGoalMl: number; // e.g. 2500
+  workoutHydrationReminderEnabled?: boolean; // default true: remind during WALK, JOG, RUN
+  workoutHydrationReminderIntervalMin?: number; // default 30 minutes
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface RoutePoint {
+  lat: number;
+  lng: number;
+  timestamp: number;
+  accuracy?: number;
+  speed?: number;
 }
 
 export interface Workout {
@@ -30,6 +40,8 @@ export interface Workout {
   isManual: boolean;
   notes?: string;
   createdAt: string;
+  route?: RoutePoint[];
+  healthConnectSynced?: boolean;
 }
 
 export interface WeightEntry {
