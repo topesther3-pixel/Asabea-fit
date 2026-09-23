@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { AppState, TODAY_STR } from '../lib/store';
 import { TabType } from './BottomNav';
+import { WorkoutType } from '../types';
+import { AsabeaCompanionFigure } from './AsabeaCompanionFigure';
 
 interface HomeDashboardProps {
   state: AppState;
@@ -29,6 +31,8 @@ interface HomeDashboardProps {
   onOpenWeightModal: () => void;
   onOpenFoodModal: () => void;
   onOpenMoodModal: () => void;
+  isWorkoutActive?: boolean;
+  activeWorkoutInfo?: { type: WorkoutType; durationSec: number; distanceKm: number } | null;
 }
 
 // Reusable Circular Progress Ring Component in ASABEA FIT Pink & Blue
@@ -96,8 +100,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onQuickWater,
   onOpenWeightModal,
   onOpenFoodModal,
-  onOpenMoodModal
+  onOpenMoodModal,
+  isWorkoutActive = false,
+  activeWorkoutInfo
 }) => {
+  const [avatarView, setAvatarView] = useState<'animated' | 'portrait'>('animated');
   const { profile, workouts, weights, waterLogs, habits } = state;
 
   // Real recorded metrics from user's workouts today
@@ -273,6 +280,39 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       </div>
 
+      {/* Live Active Workout Banner (Visible when workout is running in background) */}
+      {isWorkoutActive && (
+        <div
+          onClick={onStartWorkout}
+          className="p-3.5 rounded-3xl bg-gradient-to-r from-[#FFF5F7] via-[#EFF6FF] to-[#FFF5F7] border border-[#FCECEF] shadow-sm cursor-pointer hover:border-[#E96A8D] transition flex items-center justify-between gap-3 animate-in fade-in duration-300"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#E96A8D] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black text-[#252525] uppercase tracking-wide">
+                  Active {activeWorkoutInfo?.type || 'Workout'} Session
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-[#E96A8D] text-white text-[9px] font-black">
+                  LIVE
+                </span>
+              </div>
+              <p className="text-[11px] text-[#E96A8D] font-bold mt-0.5">
+                Walking with Asabea 💗 • {activeWorkoutInfo?.distanceKm ? activeWorkoutInfo.distanceKm.toFixed(2) : '0.00'} km
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onStartWorkout}
+            className="px-3 py-1.5 rounded-xl bg-white border border-[#FCECEF] text-[#E96A8D] text-xs font-black shadow-2xs hover:bg-[#FCECEF] transition"
+          >
+            Open Live Map →
+          </button>
+        </div>
+      )}
+
       {/* ======================================================== */}
       {/* 2. MAIN ACTIVITY AREA: Large White Card with Pink/Blue Accents */}
       {/*    Left: Steps, Calories, Active Indicators              */}
@@ -352,33 +392,64 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           {/* Right Column: 3D Female Fitness Avatar wearing ASABEA FIT clothes */}
-          <div className="flex-shrink-0 flex items-center justify-center pl-2">
+          <div className="flex-shrink-0 flex flex-col items-center justify-center pl-2">
             <div className="relative group">
-              <div className="w-36 h-48 sm:w-40 sm:h-52 flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-b from-[#FFF5F7] to-[#F0F7FF] border border-[#FCECEF]">
-                <img
-                  src="/asabea_fitness_avatar.jpg"
-                  alt="ASABEA FIT 3D Fitness Avatar"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-contain transform transition-transform duration-300 group-hover:scale-105"
-                  onError={(e) => {
-                    // Fallback to stylized SVG avatar if image loading fails
-                    const target = e.currentTarget;
-                    target.style.display = 'none';
-                    if (target.parentElement) {
-                      target.parentElement.innerHTML = `
-                        <div class="flex flex-col items-center justify-center p-3 text-center">
-                          <span class="text-4xl mb-1">🏃‍♀️</span>
-                          <span class="text-[11px] font-black text-[#E96A8D]">ASABEA FIT</span>
-                          <span class="text-[9px] text-[#3B82F6] font-semibold">Small Steps. Big Results.</span>
-                        </div>
-                      `;
-                    }
+              <div className="w-36 h-48 sm:w-40 sm:h-52 flex flex-col items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-b from-[#FFF5F7] to-[#F0F7FF] border border-[#FCECEF] p-2 relative">
+                {avatarView === 'animated' ? (
+                  <div className="flex flex-col items-center justify-center">
+                    <AsabeaCompanionFigure
+                      mode={isWorkoutActive ? (activeWorkoutInfo?.type || 'JOG') : 'IDLE'}
+                      size={120}
+                      showBubble={true}
+                      bubbleText={
+                        isWorkoutActive
+                          ? `Let's keep moving! 💗`
+                          : undefined
+                      }
+                      onClick={() => {
+                        onStartWorkout();
+                      }}
+                    />
+                    <span className="text-[10px] font-extrabold text-[#E96A8D] mt-1 text-center">
+                      {isWorkoutActive ? 'Walking with you!' : 'Tap Asabea to walk 💗'}
+                    </span>
+                  </div>
+                ) : (
+                  <img
+                    src="/asabea_fitness_avatar.jpg"
+                    alt="ASABEA FIT 3D Fitness Avatar"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-contain transform transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.style.display = 'none';
+                    }}
+                  />
+                )}
+
+                {/* View toggle badge */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAvatarView(avatarView === 'animated' ? 'portrait' : 'animated');
                   }}
-                />
+                  className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-white/90 border border-[#FCECEF] text-[8px] font-black text-gray-500 hover:text-[#E96A8D] transition"
+                  title="Switch between 3D Animated Companion and Portrait"
+                >
+                  {avatarView === 'animated' ? '3D Model' : 'Animated'}
+                </button>
               </div>
-              <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-white/95 border border-[#FCECEF] shadow-2xs text-[9px] font-bold text-[#E96A8D] whitespace-nowrap">
-                ASABEA FIT
-              </span>
+
+              <div className="text-center mt-1">
+                <button
+                  type="button"
+                  onClick={onStartWorkout}
+                  className="px-2.5 py-1 rounded-full bg-white border border-[#FCECEF] shadow-2xs hover:bg-[#FCECEF] text-[9px] font-black text-[#E96A8D] inline-flex items-center gap-1 transition"
+                >
+                  <span>{isWorkoutActive ? 'View Map' : 'Walk with Asabea 💗'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -100,6 +100,12 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
+    // Live Locations (Safe Jog)
+    match /live_locations/{userId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isOwner(userId);
+    }
+
     function existingData() {
       return resource.data;
     }

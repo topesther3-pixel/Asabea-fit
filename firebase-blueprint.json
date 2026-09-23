@@ -145,6 +145,25 @@
         "createdAt": { "type": "string", "maxLength": 40 }
       },
       "required": ["userId", "stage", "photoUrl", "date", "createdAt"]
+    },
+    "LiveLocation": {
+      "title": "LiveLocation",
+      "description": "Real-time location coordinate and status for workout tracking and Safe Jog",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "workoutType": { "type": "string", "maxLength": 30 },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "speed": { "type": "number" },
+        "distanceKm": { "type": "number" },
+        "durationSeconds": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 40 },
+        "endedAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "isActive"]
     }
   },
   "firestore": {
@@ -187,6 +206,10 @@
     "/progressPhotos/{photoId}": {
       "schema": "ProgressPhoto",
       "description": "Private user progress photos"
+    },
+    "/live_locations/{userId}": {
+      "schema": "LiveLocation",
+      "description": "Live workout tracking coordinate and status for the user"
     }
   }
 }

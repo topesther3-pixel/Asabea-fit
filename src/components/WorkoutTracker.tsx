@@ -29,6 +29,8 @@ import { Workout, WorkoutType, RoutePoint } from '../types';
 import { calculateCalories, calculatePace, TODAY_STR } from '../lib/store';
 import { nativeWorkoutBridge } from '../lib/nativeWorkoutBridge';
 import { updateLiveWorkoutLocation, clearLiveWorkoutLocation } from '../lib/firestoreService';
+import { LiveCompanionMap } from './LiveCompanionMap';
+import { AsabeaCompanionFigure } from './AsabeaCompanionFigure';
 
 interface WorkoutTrackerProps {
   workouts: Workout[];
@@ -281,15 +283,15 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
             prevCoordsRef.current = { lat: latitude, lng: longitude };
             setRoutePoints((prev) => [...prev, newPoint]);
 
-            // Safe Jog Live Location sync to Firestore
-            if (isSafeJogEnabled) {
+            // Safe Jog Live Location sync to Firestore (only when authenticated)
+            if (isSafeJogEnabled && userId && userId !== 'asabea-primary') {
               updateLiveWorkoutLocation({
                 userId,
                 workoutType: selectedType,
                 lat: latitude,
                 lng: longitude,
-                accuracy: accuracy || undefined,
-                speed: speed || undefined,
+                ...(typeof accuracy === 'number' ? { accuracy } : {}),
+                ...(typeof speed === 'number' && speed >= 0 ? { speed } : {}),
                 distanceKm: distanceKm,
                 durationSeconds: elapsedSeconds,
                 isActive: true,
@@ -355,6 +357,16 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
     startGpsTracking();
   };
 
+  // Simulated / Demo Route mode point handler (satisfies requirement for test demo route)
+  const handleSimulatedPoint = (point: RoutePoint, simulatedDeltaKm: number) => {
+    setRoutePoints((prev) => [...prev, point]);
+    routePointsRef.current = [...routePointsRef.current, point];
+    if (simulatedDeltaKm > 0) {
+      setDistanceKm((prev) => prev + simulatedDeltaKm);
+    }
+    setGpsStatus('active');
+  };
+
   // Explicit user pause
   const handlePause = () => {
     if (isPaused) return;
@@ -389,7 +401,7 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
     await nativeWorkoutBridge.stopService();
 
     // 3. Stop live location sharing
-    if (isSafeJogEnabled) {
+    if (isSafeJogEnabled && userId && userId !== 'asabea-primary') {
       clearLiveWorkoutLocation(userId);
     }
 
@@ -830,12 +842,23 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
               </div>
             </div>
 
-            {/* Live GPS Route Visualizer */}
-            <div className="text-left space-y-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                Live Route & Coordinates
-              </span>
-              {renderSvgRoute(routePoints, 120)}
+            {/* Live Companion Map Visualizer with Animated 3D Asabea Companion */}
+            <div className="text-left pt-1">
+              <LiveCompanionMap
+                workoutType={selectedType}
+                isActive={isActive}
+                isPaused={isPaused}
+                elapsedSeconds={elapsedSeconds}
+                distanceKm={distanceKm}
+                paceMinPerKm={currentPace}
+                calories={currentCalories}
+                routePoints={routePoints}
+                gpsStatus={gpsStatus}
+                targetMinutes={targetMinutes}
+                onPauseToggle={isPaused ? handleResume : handlePause}
+                onFinish={handleFinish}
+                onSimulatedPoint={handleSimulatedPoint}
+              />
             </div>
 
             {/* Live GPS / Sensor indicator */}
@@ -899,8 +922,13 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
           </div>
         ) : (
           <div className="py-4 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-[#FCECEF] text-[#E96A8D] flex items-center justify-center mx-auto mb-2">
-              <Flame className="w-8 h-8" />
+            <div className="flex justify-center mb-1">
+              <AsabeaCompanionFigure
+                mode="IDLE"
+                size={88}
+                showBubble={true}
+                bubbleText={`Ready to ${selectedType.toLowerCase()} together! 💗`}
+              />
             </div>
 
             <h3 className="text-lg font-black text-[#252525]">
@@ -1037,10 +1065,15 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 space-y-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="text-center space-y-1">
-              <div className="w-14 h-14 rounded-full bg-[#FCECEF] text-[#E96A8D] flex items-center justify-center mx-auto mb-1">
-                <CheckCircle2 className="w-8 h-8 text-[#E96A8D]" />
+              <div className="flex justify-center mb-1">
+                <AsabeaCompanionFigure
+                  mode="CELEBRATE"
+                  size={88}
+                  showBubble={true}
+                  bubbleText="Workout Complete! 🎉"
+                />
               </div>
-              <h3 className="text-lg font-black text-[#252525]">Workout Complete!</h3>
+              <h3 className="text-lg font-black text-[#252525]">Workout Complete! 🎉</h3>
               <p className="text-xs text-gray-500">
                 Small steps. Big results. Every step adds up, Asabea.
               </p>

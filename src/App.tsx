@@ -648,6 +648,8 @@ export function App() {
             onOpenMoodModal={() => {
               setCurrentTab('journal');
             }}
+            isWorkoutActive={isWorkoutActive}
+            activeWorkoutInfo={activeWorkoutInfo}
           />
         )}
 

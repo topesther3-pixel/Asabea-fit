@@ -22,8 +22,31 @@ import {
   MilestoneItem
 } from '../types';
 
+// Utility to recursively strip any undefined keys or nested array values to prevent Firestore unsupported field errors
+export function cleanFirestorePayload<T extends Record<string, any>>(obj: T): T {
+  const cleaned: Record<string, any> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val === undefined) {
+      continue;
+    }
+    if (Array.isArray(val)) {
+      cleaned[key] = val
+        .filter((item) => item !== undefined)
+        .map((item) => (typeof item === 'object' && item !== null ? cleanFirestorePayload(item) : item));
+    } else if (typeof val === 'object' && val !== null) {
+      cleaned[key] = cleanFirestorePayload(val);
+    } else {
+      cleaned[key] = val;
+    }
+  }
+  return cleaned as T;
+}
+
 // Sync Profile
 export async function syncProfileToFirestore(profile: UserProfile, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
   const path = `profiles/${userId}`;
   try {
     const payload = {
@@ -39,7 +62,7 @@ export async function syncProfileToFirestore(profile: UserProfile, userId: strin
       createdAt: profile.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    await setDoc(doc(db, 'profiles', userId), payload, { merge: true });
+    await setDoc(doc(db, 'profiles', userId), cleanFirestorePayload(payload), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -47,6 +70,9 @@ export async function syncProfileToFirestore(profile: UserProfile, userId: strin
 
 // Workouts
 export async function saveWorkoutToFirestore(workout: Workout, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
   const path = `workouts/${workout.id}`;
   try {
     const payload = {
@@ -56,7 +82,7 @@ export async function saveWorkoutToFirestore(workout: Workout, userId: string) {
       durationSeconds: Number(workout.durationSeconds),
       calories: Number(workout.calories)
     };
-    await setDoc(doc(db, 'workouts', workout.id), payload);
+    await setDoc(doc(db, 'workouts', workout.id), cleanFirestorePayload(payload));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -73,6 +99,9 @@ export async function deleteWorkoutFromFirestore(workoutId: string) {
 
 // Weights
 export async function saveWeightToFirestore(entry: WeightEntry, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
   const path = `weights/${entry.id}`;
   try {
     const payload = {
@@ -81,13 +110,14 @@ export async function saveWeightToFirestore(entry: WeightEntry, userId: string) 
       weightKg: Number(entry.weightKg),
       waistCm: entry.waistCm ? Number(entry.waistCm) : null
     };
-    await setDoc(doc(db, 'weights', entry.id), payload);
+    await setDoc(doc(db, 'weights', entry.id), cleanFirestorePayload(payload));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function deleteWeightFromFirestore(weightId: string) {
+  if (!auth?.currentUser) return;
   const path = `weights/${weightId}`;
   try {
     await deleteDoc(doc(db, 'weights', weightId));
@@ -98,6 +128,9 @@ export async function deleteWeightFromFirestore(weightId: string) {
 
 // Water
 export async function saveWaterLogToFirestore(log: WaterLog, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
   const path = `water/${log.id}`;
   try {
     const payload = {
@@ -105,13 +138,14 @@ export async function saveWaterLogToFirestore(log: WaterLog, userId: string) {
       userId,
       amountMl: Number(log.amountMl)
     };
-    await setDoc(doc(db, 'water', log.id), payload);
+    await setDoc(doc(db, 'water', log.id), cleanFirestorePayload(payload));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function deleteWaterLogFromFirestore(waterId: string) {
+  if (!auth?.currentUser) return;
   const path = `water/${waterId}`;
   try {
     await deleteDoc(doc(db, 'water', waterId));
@@ -122,6 +156,9 @@ export async function deleteWaterLogFromFirestore(waterId: string) {
 
 // Habits
 export async function saveHabitLogToFirestore(habit: HabitLog, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
   const habitDocId = `${userId}_${habit.date}`;
   const path = `habits/${habitDocId}`;
   try {
@@ -131,7 +168,7 @@ export async function saveHabitLogToFirestore(habit: HabitLog, userId: string) {
       userId,
       updatedAt: new Date().toISOString()
     };
-    await setDoc(doc(db, 'habits', habitDocId), payload);
+    await setDoc(doc(db, 'habits', habitDocId), cleanFirestorePayload(payload));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -139,19 +176,23 @@ export async function saveHabitLogToFirestore(habit: HabitLog, userId: string) {
 
 // Food
 export async function saveFoodEntryToFirestore(food: FoodEntry, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
   const path = `foodEntries/${food.id}`;
   try {
     const payload = {
       ...food,
       userId
     };
-    await setDoc(doc(db, 'foodEntries', food.id), payload);
+    await setDoc(doc(db, 'foodEntries', food.id), cleanFirestorePayload(payload));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function deleteFoodEntryFromFirestore(foodId: string) {
+  if (!auth?.currentUser) return;
   const path = `foodEntries/${foodId}`;
   try {
     await deleteDoc(doc(db, 'foodEntries', foodId));
@@ -162,6 +203,9 @@ export async function deleteFoodEntryFromFirestore(foodId: string) {
 
 // Moods
 export async function saveMoodLogToFirestore(mood: MoodLog, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
   const moodDocId = `${userId}_${mood.date}`;
   const path = `moods/${moodDocId}`;
   try {
@@ -170,7 +214,7 @@ export async function saveMoodLogToFirestore(mood: MoodLog, userId: string) {
       id: moodDocId,
       userId
     };
-    await setDoc(doc(db, 'moods', moodDocId), payload);
+    await setDoc(doc(db, 'moods', moodDocId), cleanFirestorePayload(payload));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -178,19 +222,23 @@ export async function saveMoodLogToFirestore(mood: MoodLog, userId: string) {
 
 // Journal
 export async function saveJournalEntryToFirestore(journal: JournalEntry, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
   const path = `journalEntries/${journal.id}`;
   try {
     const payload = {
       ...journal,
       userId
     };
-    await setDoc(doc(db, 'journalEntries', journal.id), payload);
+    await setDoc(doc(db, 'journalEntries', journal.id), cleanFirestorePayload(payload));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function deleteJournalEntryFromFirestore(journalId: string) {
+  if (!auth?.currentUser) return;
   const path = `journalEntries/${journalId}`;
   try {
     await deleteDoc(doc(db, 'journalEntries', journalId));
@@ -201,6 +249,9 @@ export async function deleteJournalEntryFromFirestore(journalId: string) {
 
 // Milestones
 export async function saveMilestoneToFirestore(milestoneKey: string, unlockedAt: string, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
   const milestoneDocId = `${userId}_${milestoneKey}`;
   const path = `milestones/${milestoneDocId}`;
   try {
@@ -209,7 +260,7 @@ export async function saveMilestoneToFirestore(milestoneKey: string, unlockedAt:
       milestoneKey,
       unlockedAt
     };
-    await setDoc(doc(db, 'milestones', milestoneDocId), payload);
+    await setDoc(doc(db, 'milestones', milestoneDocId), cleanFirestorePayload(payload));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -217,19 +268,23 @@ export async function saveMilestoneToFirestore(milestoneKey: string, unlockedAt:
 
 // Progress Photos
 export async function saveProgressPhotoToFirestore(photo: ProgressPhoto, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
   const path = `progressPhotos/${photo.id}`;
   try {
     const payload = {
       ...photo,
       userId
     };
-    await setDoc(doc(db, 'progressPhotos', photo.id), payload);
+    await setDoc(doc(db, 'progressPhotos', photo.id), cleanFirestorePayload(payload));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function deleteProgressPhotoFromFirestore(photoId: string) {
+  if (!auth?.currentUser) return;
   const path = `progressPhotos/${photoId}`;
   try {
     await deleteDoc(doc(db, 'progressPhotos', photoId));
@@ -433,24 +488,46 @@ export interface LiveLocationData {
 }
 
 export async function updateLiveWorkoutLocation(data: LiveLocationData) {
+  // CRITICAL: Only sync to Firestore if the user is authenticated and matches the document userId
+  if (!auth?.currentUser || !data.userId || data.userId === 'asabea-primary' || auth.currentUser.uid !== data.userId) {
+    return;
+  }
   const path = `live_locations/${data.userId}`;
   try {
-    await setDoc(doc(db, 'live_locations', data.userId), {
-      ...data,
+    const rawPayload: Record<string, any> = {
+      userId: data.userId,
+      workoutType: data.workoutType || 'WALK',
+      lat: Number(data.lat),
+      lng: Number(data.lng),
+      distanceKm: Number(data.distanceKm || 0),
+      durationSeconds: Number(data.durationSeconds || 0),
+      isActive: Boolean(data.isActive),
       updatedAt: new Date().toISOString()
-    }, { merge: true });
+    };
+    if (typeof data.accuracy === 'number' && !isNaN(data.accuracy)) {
+      rawPayload.accuracy = data.accuracy;
+    }
+    if (typeof data.speed === 'number' && !isNaN(data.speed) && data.speed >= 0) {
+      rawPayload.speed = data.speed;
+    }
+    await setDoc(doc(db, 'live_locations', data.userId), cleanFirestorePayload(rawPayload), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function clearLiveWorkoutLocation(userId: string) {
+  if (!auth?.currentUser || !userId || userId === 'asabea-primary' || auth.currentUser.uid !== userId) {
+    return;
+  }
   const path = `live_locations/${userId}`;
   try {
-    await setDoc(doc(db, 'live_locations', userId), {
+    const payload = {
       isActive: false,
-      endedAt: new Date().toISOString()
-    }, { merge: true });
+      endedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    await setDoc(doc(db, 'live_locations', userId), payload, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
