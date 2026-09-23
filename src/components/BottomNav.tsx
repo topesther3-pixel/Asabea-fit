@@ -29,13 +29,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
               className={`flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl transition-all duration-200 ${
                 isActive
                   ? 'text-[#E96A8D] font-bold scale-105'
-                  : 'text-gray-400 hover:text-gray-600 font-medium'
+                  : 'text-[#3B82F6]/70 hover:text-[#3B82F6] font-medium'
               }`}
             >
               <div className={`p-1 rounded-lg ${isActive ? 'bg-[#FCECEF]' : 'bg-transparent'}`}>
                 <Icon className={`w-5 h-5 transition-transform ${isActive ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
               </div>
-              <span className="text-[10px] tracking-wider mt-0.5 whitespace-nowrap">
+              <span className="text-[10px] tracking-wider mt-0.5 whitespace-nowrap font-medium">
                 {label}
               </span>
             </button>

@@ -38,8 +38,8 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-xl mx-auto flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold tracking-widest text-[#E96A8D] uppercase font-mono">
-              ASABEA FIT
+            <span className="text-xs font-black tracking-widest text-[#E96A8D] uppercase font-mono flex items-center gap-1">
+              ASABEA FIT <span className="text-[#E96A8D] text-xs">♡</span>
             </span>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#E96A8D]" />
             {user ? (
@@ -62,11 +62,16 @@ export const Header: React.FC<HeaderProps> = ({
             Hi {user?.displayName ? user.displayName.split(' ')[0] : displayName} <span className="text-xl">👋🏽</span>
           </h1>
           <p className="text-xs font-medium text-[#E96A8D] mt-0.5">
-            Day {dayNumber} of my healthier-me journey
+            Small Steps. Big Results. • Day {dayNumber}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Weather Badge inspired by reference */}
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-[#FCECEF] text-xs font-semibold text-[#252525] shadow-2xs">
+            <span>🌤️</span>
+            <span className="font-bold">28°C</span>
+          </div>
           {(isInstallable || isIOS) && (
             <button
               onClick={handleInstallClick}

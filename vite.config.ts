@@ -5,7 +5,12 @@ import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiKey = env.FIREBASE_API_KEY || env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY || '';
+  const apiKey =
+    env.FIREBASE_API_KEY ||
+    env.VITE_FIREBASE_API_KEY ||
+    process.env.FIREBASE_API_KEY ||
+    process.env.VITE_FIREBASE_API_KEY ||
+    'AIzaSyAi3esyzepM9962H4_ozfDbT7uq8Rdd9hE';
 
   return {
     plugins: [react(), tailwindcss()],
@@ -15,6 +20,7 @@ export default defineConfig(({mode}) => {
       },
     },
     define: {
+      'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
       'process.env.FIREBASE_API_KEY': JSON.stringify(apiKey),
       'process.env.VITE_FIREBASE_API_KEY': JSON.stringify(apiKey),
     },

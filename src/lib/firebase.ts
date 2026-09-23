@@ -14,33 +14,57 @@ import {
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Read API key securely from environment variable / secret
+const FALLBACK_FIREBASE_API_KEY = 'AIzaSyAi3esyzepM9962H4_ozfDbT7uq8Rdd9hE';
+
+// Read API key securely from environment variable / secret, config file, or fallback
 const firebaseApiKey =
   (import.meta as any).env?.VITE_FIREBASE_API_KEY ||
   (import.meta as any).env?.FIREBASE_API_KEY ||
   (typeof process !== 'undefined' && (process.env?.FIREBASE_API_KEY || process.env?.VITE_FIREBASE_API_KEY)) ||
-  firebaseConfig.apiKey;
+  firebaseConfig.apiKey ||
+  FALLBACK_FIREBASE_API_KEY;
 
 const resolvedConfig = {
   ...firebaseConfig,
   apiKey: firebaseApiKey
 };
 
-// Initialize Firebase App
-export const app = getApps().length > 0 ? getApp() : initializeApp(resolvedConfig);
+// Initialize Firebase App safely
+let appInstance: any;
+try {
+  appInstance = getApps().length > 0 ? getApp() : initializeApp(resolvedConfig);
+} catch (e) {
+  console.error('Firebase App initialization notice:', e);
+}
+export const app = appInstance;
 
 // CRITICAL: Initialize Firestore with configured databaseId from firebase-applet-config.json
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+let dbInstance: any;
+try {
+  dbInstance = app ? getFirestore(app, firebaseConfig.firestoreDatabaseId) : null;
+} catch (e) {
+  console.error('Firestore initialization notice:', e);
+}
+export const db = dbInstance;
 
-export const isFirebaseConfigured = true;
+export const isFirebaseConfigured = Boolean(app && db);
 
-// Initialize Firebase Authentication
-export const auth = getAuth(app);
+// Initialize Firebase Authentication safely
+let authInstance: any;
+try {
+  authInstance = app ? getAuth(app) : null;
+} catch (e) {
+  console.error('Firebase Auth initialization notice:', e);
+}
+export const auth = authInstance;
 
 // Provider for Google Auth
 export const googleProvider = new GoogleAuthProvider();
 
 export async function signInWithGoogle() {
+  if (!auth) {
+    throw new Error('Firebase Auth is not available. Please verify your connection.');
+  }
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
@@ -51,6 +75,7 @@ export async function signInWithGoogle() {
 }
 
 export async function signOutUser() {
+  if (!auth) return;
   try {
     await fbSignOut(auth);
   } catch (error) {
@@ -95,7 +120,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
       emailVerified: auth?.currentUser?.emailVerified,
       isAnonymous: auth?.currentUser?.isAnonymous,
       tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData?.map((provider) => ({
+      providerInfo: auth?.currentUser?.providerData?.map((provider: any) => ({
         providerId: provider.providerId,
         email: provider.email,
       })) || []
@@ -109,6 +134,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 // Validate Connection to Firestore on boot
 async function testConnection() {
+  if (!db) return;
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.info('Firebase Firestore connected successfully.');

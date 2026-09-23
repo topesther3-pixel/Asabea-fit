@@ -86,7 +86,7 @@ export function App() {
 
   // Register Service Worker for PWA
   useEffect(() => {
-    if ('serviceWorker' in navigator && process.env.NODE_ENV !== 'development') {
+    if ('serviceWorker' in navigator && (import.meta as any).env?.PROD) {
       window.addEventListener('load', () => {
         navigator.serviceWorker
           .register('/sw.js')
@@ -98,6 +98,7 @@ export function App() {
 
   // Listen to Firebase Auth state
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
