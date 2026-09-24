@@ -23,11 +23,25 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onClose,
   onResetData
 }) => {
-  const [displayName, setDisplayName] = useState(profile.displayName);
-  const [startingWeight, setStartingWeight] = useState(profile.startingWeight.toString());
+  const [firstName, setFirstName] = useState(
+    profile.firstName || (user?.displayName ? user.displayName.split(' ')[0] : (profile.displayName ? profile.displayName.split(' ')[0] : 'Friend'))
+  );
+  const [displayName, setDisplayName] = useState(profile.displayName || profile.firstName || user?.displayName || 'Fitness Friend');
+  const [age, setAge] = useState((profile.age || 26).toString());
+  const [height, setHeight] = useState((profile.height || profile.heightCm || 165).toString());
+  const [weight, setWeight] = useState(
+    (profile.weight || profile.currentWeight || profile.startingWeight || 70.0).toString()
+  );
   const [goalWeight, setGoalWeight] = useState(profile.goalWeight.toString());
-  const [heightCm, setHeightCm] = useState((profile.heightCm || 168).toString());
-  const [waterDailyGoalMl, setWaterDailyGoalMl] = useState(profile.waterDailyGoalMl.toString());
+  const [activityLevel, setActivityLevel] = useState<string>(
+    profile.activityLevel || 'Moderately Active'
+  );
+  const [dailyStepGoal, setDailyStepGoal] = useState(
+    (profile.dailyStepGoal || 10000).toString()
+  );
+  const [dailyWaterGoal, setDailyWaterGoal] = useState(
+    (profile.dailyWaterGoal || profile.waterDailyGoalMl || 2500).toString()
+  );
   const [journeyStartDate, setJourneyStartDate] = useState(profile.journeyStartDate);
   const [workoutHydrationReminderEnabled, setWorkoutHydrationReminderEnabled] = useState(
     profile.workoutHydrationReminderEnabled !== false
@@ -66,12 +80,28 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanFirstName = firstName.trim() || 'Fitness Friend';
+    const parsedWeight = parseFloat(weight) || 70.0;
+    const parsedGoal = parseFloat(goalWeight) || 65.0;
+    const parsedHeight = parseFloat(height) || 168;
+    const parsedWater = parseInt(dailyWaterGoal, 10) || 2500;
+    const parsedSteps = parseInt(dailyStepGoal, 10) || 10000;
+    const parsedAge = parseInt(age, 10) || 26;
+
     onUpdateProfile({
-      displayName: displayName.trim() || 'Asabea',
-      startingWeight: parseFloat(startingWeight) || 78.5,
-      goalWeight: parseFloat(goalWeight) || 68.0,
-      heightCm: parseFloat(heightCm) || 168,
-      waterDailyGoalMl: parseInt(waterDailyGoalMl, 10) || 2500,
+      firstName: cleanFirstName,
+      displayName: displayName.trim() || cleanFirstName,
+      age: parsedAge,
+      height: parsedHeight,
+      heightCm: parsedHeight,
+      weight: parsedWeight,
+      currentWeight: parsedWeight,
+      startingWeight: profile.startingWeight || parsedWeight,
+      goalWeight: parsedGoal,
+      activityLevel: activityLevel as any,
+      dailyStepGoal: parsedSteps,
+      dailyWaterGoal: parsedWater,
+      waterDailyGoalMl: parsedWater,
       workoutHydrationReminderEnabled,
       workoutHydrationReminderIntervalMin: Number(workoutHydrationReminderIntervalMin),
       journeyStartDate
@@ -85,10 +115,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#FCECEF] text-[#E96A8D] flex items-center justify-center font-bold text-xs">
-              A
+            <div className="w-8 h-8 rounded-full bg-[#FCECEF] text-[#E96A8D] flex items-center justify-center font-bold text-xs uppercase">
+              {(firstName || 'A').charAt(0)}
             </div>
-            <h3 className="text-base font-extrabold text-[#252525]">Profile & Cloud Sync</h3>
+            <div>
+              <h3 className="text-base font-extrabold text-[#252525]">Profile & Cloud Sync</h3>
+              <span className="text-[11px] font-extrabold text-[#E96A8D] font-mono tracking-wider block">
+                {firstName.toUpperCase()} FIT♡
+              </span>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -127,8 +162,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-[#252525] truncate">{user.displayName || 'Asabea'}</p>
+                  <p className="text-xs font-bold text-[#252525] truncate">{user.displayName || firstName}</p>
                   <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                  <p className="text-[9px] font-mono text-[#E96A8D] font-bold truncate">users/{user.uid}</p>
                 </div>
               </div>
 
@@ -204,31 +240,51 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-          <div>
-            <label className="text-xs font-bold text-gray-600 block mb-1">Display Name</label>
-            <input
-              type="text"
-              required
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-[#252525]"
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-bold text-gray-600 block mb-1">First Name</label>
+              <input
+                type="text"
+                required
+                value={firstName}
+                onChange={(e) => {
+                  setFirstName(e.target.value);
+                  if (!displayName || displayName === firstName) {
+                    setDisplayName(e.target.value);
+                  }
+                }}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-[#252525]"
+                placeholder="Your first name"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-600 block mb-1">Age</label>
+              <input
+                type="number"
+                min="10"
+                max="120"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-[#252525]"
+                placeholder="26"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs font-bold text-gray-600 block mb-1">Starting (kg)</label>
+              <label className="text-xs font-bold text-gray-600 block mb-1">Current Weight (kg)</label>
               <input
                 type="number"
                 step="0.1"
                 required
-                value={startingWeight}
-                onChange={(e) => setStartingWeight(e.target.value)}
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold"
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-gray-600 block mb-1">Goal (kg)</label>
+              <label className="text-xs font-bold text-gray-600 block mb-1">Goal Weight (kg)</label>
               <input
                 type="number"
                 step="0.1"
@@ -245,9 +301,35 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <label className="text-xs font-bold text-gray-600 block mb-1">Height (cm)</label>
               <input
                 type="number"
-                value={heightCm}
-                onChange={(e) => setHeightCm(e.target.value)}
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-600 block mb-1">Activity Level</label>
+              <select
+                value={activityLevel}
+                onChange={(e) => setActivityLevel(e.target.value)}
+                className="w-full px-2 py-2 rounded-xl border border-gray-200 text-xs font-bold text-[#252525] bg-white"
+              >
+                <option value="Sedentary">Sedentary</option>
+                <option value="Lightly Active">Lightly Active</option>
+                <option value="Moderately Active">Moderately Active</option>
+                <option value="Very Active">Very Active</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-bold text-gray-600 block mb-1">Daily Steps Goal</label>
+              <input
+                type="number"
+                step="500"
+                value={dailyStepGoal}
+                onChange={(e) => setDailyStepGoal(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-[#3B82F6]"
               />
             </div>
             <div>
@@ -255,9 +337,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <input
                 type="number"
                 step="100"
-                value={waterDailyGoalMl}
-                onChange={(e) => setWaterDailyGoalMl(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold"
+                value={dailyWaterGoal}
+                onChange={(e) => setDailyWaterGoal(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-[#3B82F6]"
               />
             </div>
           </div>
@@ -348,7 +430,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         </form>
 
         <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs">
-          <span className="text-gray-400 font-medium">AsabeaCreates • Firebase</span>
+          <span className="text-gray-400 font-medium">ASABEA FIT Platform • Multi-User</span>
           <button
             onClick={onResetData}
             className="text-red-400 hover:text-red-600 font-semibold"

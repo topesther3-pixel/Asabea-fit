@@ -12,19 +12,41 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   onComplete
 }) => {
   const [step, setStep] = useState(1);
-  const [displayName, setDisplayName] = useState(initialProfile.displayName);
-  const [startingWeight, setStartingWeight] = useState(initialProfile.startingWeight.toString());
-  const [goalWeight, setGoalWeight] = useState(initialProfile.goalWeight.toString());
-  const [heightCm, setHeightCm] = useState((initialProfile.heightCm || 168).toString());
+  const [firstName, setFirstName] = useState(
+    initialProfile.firstName || (initialProfile.displayName ? initialProfile.displayName.split(' ')[0] : 'Friend')
+  );
+  const [displayName, setDisplayName] = useState(initialProfile.displayName || 'Friend');
+  const [age, setAge] = useState((initialProfile.age || 26).toString());
+  const [startingWeight, setStartingWeight] = useState(
+    (initialProfile.startingWeight || initialProfile.weight || 70).toString()
+  );
+  const [goalWeight, setGoalWeight] = useState((initialProfile.goalWeight || 65).toString());
+  const [heightCm, setHeightCm] = useState(
+    (initialProfile.height || initialProfile.heightCm || 168).toString()
+  );
+  const [activityLevel, setActivityLevel] = useState<string>(
+    initialProfile.activityLevel || 'Moderately Active'
+  );
 
   const handleFinish = () => {
+    const cleanFirstName = firstName.trim() || 'Fitness Friend';
+    const parsedWeight = parseFloat(startingWeight) || 70.0;
+    const parsedGoal = parseFloat(goalWeight) || 65.0;
+    const parsedHeight = parseFloat(heightCm) || 168;
+    const parsedAge = parseInt(age, 10) || 26;
+
     onComplete({
       ...initialProfile,
-      displayName: displayName.trim() || 'Asabea',
-      startingWeight: parseFloat(startingWeight) || 78.5,
-      goalWeight: parseFloat(goalWeight) || 68.0,
-      currentWeight: parseFloat(startingWeight) || 78.5,
-      heightCm: parseFloat(heightCm) || 168
+      firstName: cleanFirstName,
+      displayName: displayName.trim() || cleanFirstName,
+      age: parsedAge,
+      height: parsedHeight,
+      heightCm: parsedHeight,
+      weight: parsedWeight,
+      currentWeight: parsedWeight,
+      startingWeight: parsedWeight,
+      goalWeight: parsedGoal,
+      activityLevel: activityLevel as any
     });
   };
 
@@ -39,15 +61,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-[#E96A8D] uppercase tracking-widest font-mono">
-                ASABEA FIT
+                {firstName ? `${firstName.toUpperCase()} FIT♡` : 'ASABEA FIT'}
               </span>
               <h2 className="text-2xl font-black text-[#252525]">
-                Welcome, Asabea!
+                Welcome, {firstName || 'Friend'}!
               </h2>
             </div>
 
             <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-              Your personal progressive web app fitness companion. Built to celebrate your dedication, track your walks, jogs, water, and weight loss.
+              Your personalized fitness companion. Built to celebrate your dedication, track your walks, jogs, water, and weight loss.
             </p>
 
             <div className="p-3.5 rounded-2xl bg-[#FCECEF] text-[#E96A8D] font-serif italic text-xs font-semibold">
@@ -72,14 +94,30 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             </div>
 
             <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Your Name</label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm font-extrabold text-[#252525]"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-gray-600 block mb-1">First Name</label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => {
+                      setFirstName(e.target.value);
+                      if (!displayName || displayName === firstName) {
+                        setDisplayName(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm font-extrabold text-[#252525]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-600 block mb-1">Age</label>
+                  <input
+                    type="number"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm font-extrabold text-[#252525]"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -105,14 +143,29 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Height (cm)</label>
-                <input
-                  type="number"
-                  value={heightCm}
-                  onChange={(e) => setHeightCm(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-[#252525]"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-gray-600 block mb-1">Height (cm)</label>
+                  <input
+                    type="number"
+                    value={heightCm}
+                    onChange={(e) => setHeightCm(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-[#252525]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-600 block mb-1">Activity Level</label>
+                  <select
+                    value={activityLevel}
+                    onChange={(e) => setActivityLevel(e.target.value)}
+                    className="w-full px-2 py-2 rounded-xl border border-gray-200 text-xs font-bold text-[#252525] bg-white"
+                  >
+                    <option value="Sedentary">Sedentary</option>
+                    <option value="Lightly Active">Lightly Active</option>
+                    <option value="Moderately Active">Moderately Active</option>
+                    <option value="Very Active">Very Active</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -158,7 +211,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               onClick={handleFinish}
               className="w-full py-3.5 rounded-2xl bg-[#E96A8D] text-white font-extrabold text-sm shadow-md shadow-[#E96A8D]/25 hover:bg-[#d85579] transition"
             >
-              Enter ASABEA FIT
+              Enter {firstName ? `${firstName.toUpperCase()} FIT♡` : 'ASABEA FIT'}
             </button>
           </div>
         )}

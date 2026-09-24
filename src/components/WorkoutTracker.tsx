@@ -38,6 +38,8 @@ interface WorkoutTrackerProps {
   onDeleteWorkout: (id: string) => void;
   initialType?: WorkoutType;
   userId?: string;
+  userFirstName?: string;
+  personalizedBrand?: string;
   onActiveStateChange?: (isActive: boolean, summary?: { type: WorkoutType; durationSec: number; distanceKm: number }) => void;
   hydrationReminderEnabled?: boolean;
   hydrationReminderIntervalMin?: number;
@@ -50,11 +52,15 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
   onDeleteWorkout,
   initialType = 'JOG',
   userId = 'asabea-primary',
+  userFirstName,
+  personalizedBrand,
   onActiveStateChange,
   hydrationReminderEnabled = true,
   hydrationReminderIntervalMin = 30,
   onOpenProfileSettings
 }) => {
+  const athleteFirstName = userFirstName || 'Friend';
+  const brand = personalizedBrand || (userFirstName ? `${userFirstName.toUpperCase()} FIT♡` : 'ASABEA FIT♡');
   const [selectedType, setSelectedType] = useState<WorkoutType>(initialType);
   const [targetMinutes, setTargetMinutes] = useState<number | null>(null);
 
@@ -855,6 +861,8 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
                 routePoints={routePoints}
                 gpsStatus={gpsStatus}
                 targetMinutes={targetMinutes}
+                userFirstName={athleteFirstName}
+                personalizedBrand={brand}
                 onPauseToggle={isPaused ? handleResume : handlePause}
                 onFinish={handleFinish}
                 onSimulatedPoint={handleSimulatedPoint}
@@ -1075,7 +1083,7 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
               </div>
               <h3 className="text-lg font-black text-[#252525]">Workout Complete! 🎉</h3>
               <p className="text-xs text-gray-500">
-                Small steps. Big results. Every step adds up, Asabea.
+                Small steps. Big results. Every step adds up, {athleteFirstName}.
               </p>
             </div>
 
@@ -1111,7 +1119,7 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
             <div className="text-[11px] text-gray-500 space-y-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
               <div className="flex items-center gap-1.5 text-[#65A87A] font-bold">
                 <Check className="w-3.5 h-3.5" />
-                <span>Saved to ASABEA FIT Journal & Firestore</span>
+                <span>Saved to {brand} & Firestore</span>
               </div>
               {isSafeJogEnabled && (
                 <div className="flex items-center gap-1.5 text-gray-600">
@@ -1120,6 +1128,19 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Share Workout to WhatsApp */}
+            <button
+              onClick={() => {
+                const cleanTag = athleteFirstName.replace(/[^a-zA-Z0-9]/g, '');
+                const text = `🏃🏽‍♀️ ${brand} Workout Completed! ✨\n\n📍 Distance: ${completedSummary.distanceKm} km\n⏱️ Duration: ${formatTime(completedSummary.durationSeconds)}\n⚡ Pace: ${completedSummary.paceMinPerKm}/km\n🔥 Burned: ${completedSummary.calories} kcal\n\n"Small Steps. Big Results."\n#${cleanTag}Fit #SmallStepsBigResults`;
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+              }}
+              className="w-full py-2.5 rounded-xl bg-[#25D366]/15 text-[#128C7E] font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-[#25D366]/25 transition"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Share Workout Graphic to WhatsApp</span>
+            </button>
 
             <button
               onClick={() => setCompletedSummary(null)}

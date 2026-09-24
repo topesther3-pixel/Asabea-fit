@@ -9,6 +9,8 @@ import {
   JournalEntry,
   MilestoneItem,
   ProgressPhoto,
+  HeartRateEntry,
+  SleepEntry,
   WorkoutType,
   PhotoStage
 } from '../types';
@@ -18,19 +20,68 @@ import { collection, doc, setDoc, getDocs, deleteDoc, query, where, orderBy } fr
 export const TODAY_STR = new Date().toISOString().split('T')[0];
 
 export const INITIAL_PROFILE: UserProfile = {
-  userId: 'asabea-primary',
-  displayName: 'Asabea',
-  email: 'estherasab@gmail.com',
-  startingWeight: 78.5,
-  goalWeight: 68.0,
-  currentWeight: 78.5,
-  heightCm: 168,
-  journeyStartDate: TODAY_STR,
+  uid: 'guest-primary',
+  userId: 'guest-primary',
+  firstName: '',
+  displayName: 'Fitness Friend',
+  personalizedBrand: 'ASABEA FIT♡',
+  email: '',
+  age: 26,
+  height: 165,
+  heightCm: 165,
+  weight: 70.0,
+  startingWeight: 70.0,
+  goalWeight: 65.0,
+  currentWeight: 70.0,
+  activityLevel: 'Moderately Active',
+  dailyStepGoal: 8000,
+  dailyWaterGoal: 2500,
   waterDailyGoalMl: 2500,
+  dailyCalorieGoal: 400,
+  dailyActiveMinutesGoal: 30,
+  avatar: '',
+  journeyStartDate: TODAY_STR,
   workoutHydrationReminderEnabled: true,
   workoutHydrationReminderIntervalMin: 30,
   createdAt: new Date().toISOString()
 };
+
+export function createNewUserProfile(user: {
+  uid: string;
+  displayName?: string | null;
+  email?: string | null;
+  photoURL?: string | null;
+}): UserProfile {
+  const rawName = user.displayName?.trim() || '';
+  const firstName = rawName ? rawName.split(' ')[0] : 'Fitness Friend';
+  const personalizedBrand = `${firstName.toUpperCase()} FIT♡`;
+  return {
+    uid: user.uid,
+    userId: user.uid,
+    firstName,
+    displayName: rawName || firstName,
+    personalizedBrand,
+    email: user.email || '',
+    age: 26,
+    height: 168,
+    heightCm: 168,
+    weight: 68.0,
+    startingWeight: 68.0,
+    goalWeight: 62.0,
+    currentWeight: 68.0,
+    activityLevel: 'Moderately Active',
+    dailyStepGoal: 10000,
+    dailyWaterGoal: 2500,
+    waterDailyGoalMl: 2500,
+    dailyCalorieGoal: 450,
+    dailyActiveMinutesGoal: 30,
+    avatar: user.photoURL || '',
+    journeyStartDate: TODAY_STR,
+    workoutHydrationReminderEnabled: true,
+    workoutHydrationReminderIntervalMin: 30,
+    createdAt: new Date().toISOString()
+  };
+}
 
 export const MILESTONE_DEFINITIONS: { key: string; title: string; description: string; category: MilestoneItem['category'] }[] = [
   { key: 'DAY_1', title: 'Day 1: Showed Up', description: 'Began the healthier-me journey with purpose.', category: 'journey' },
@@ -73,6 +124,8 @@ export interface AppState {
   journalEntries: JournalEntry[];
   milestones: Record<string, MilestoneItem>;
   progressPhotos: ProgressPhoto[];
+  heartRates: HeartRateEntry[];
+  sleepLogs: SleepEntry[];
   onboardingCompleted: boolean;
   activeWorkout: {
     isRunning: boolean;
@@ -84,15 +137,19 @@ export interface AppState {
   } | null;
 }
 
-const STORAGE_KEY = 'asabea_fit_data_v1';
+const STORAGE_KEY_PREFIX = 'asabea_fit_data_';
 
-export function loadStoredState(): AppState {
+export function loadStoredState(userId?: string): AppState {
   if (typeof window === 'undefined') {
     return createDefaultState();
   }
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = userId ? `${STORAGE_KEY_PREFIX}${userId}` : 'asabea_fit_data_v1';
+    let raw = localStorage.getItem(key);
+    if (!raw && userId) {
+      raw = localStorage.getItem('asabea_fit_data_v1');
+    }
     if (raw) {
       const parsed = JSON.parse(raw);
       // Ensure milestones exist
@@ -101,15 +158,22 @@ export function loadStoredState(): AppState {
         if (!milestones[def.key]) {
           milestones[def.key] = {
             ...def,
-            unlocked: def.key === 'DAY_1', // Day 1 unlocked by showing up
+            unlocked: def.key === 'DAY_1',
             unlockedAt: def.key === 'DAY_1' ? new Date().toISOString() : undefined
           };
         }
       });
 
       return {
-        ...createDefaultState(),
+        ...createDefaultState(userId),
         ...parsed,
+        profile: {
+          ...INITIAL_PROFILE,
+          ...(parsed.profile || {}),
+          userId: userId || parsed.profile?.userId || 'asabea-primary'
+        },
+        heartRates: parsed.heartRates || [],
+        sleepLogs: parsed.sleepLogs || [],
         milestones
       };
     }
@@ -117,36 +181,45 @@ export function loadStoredState(): AppState {
     console.error('Error loading stored state:', err);
   }
 
-  return createDefaultState();
+  return createDefaultState(userId);
 }
 
-export function saveStoredState(state: AppState) {
+export function saveStoredState(state: AppState, userId?: string) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const uid = userId || state.profile.userId || state.profile.uid;
+    const key = uid ? `${STORAGE_KEY_PREFIX}${uid}` : 'asabea_fit_data_v1';
+    localStorage.setItem(key, JSON.stringify(state));
   } catch (err) {
     console.error('Error saving state:', err);
   }
 }
 
-function createDefaultState(): AppState {
+export function createDefaultState(userId?: string): AppState {
   const defaultMilestones: Record<string, MilestoneItem> = {};
   MILESTONE_DEFINITIONS.forEach(def => {
     defaultMilestones[def.key] = {
       ...def,
-      unlocked: def.key === 'DAY_1', // Day 1 unlocked!
+      unlocked: def.key === 'DAY_1',
       unlockedAt: def.key === 'DAY_1' ? new Date().toISOString() : undefined
     };
   });
 
+  const uid = userId || 'guest-primary';
+  const profile: UserProfile = {
+    ...INITIAL_PROFILE,
+    userId: uid,
+    uid: uid
+  };
+
   return {
-    profile: INITIAL_PROFILE,
+    profile,
     workouts: [],
     weights: [
       {
-        id: 'init-weight',
-        userId: 'asabea-primary',
-        weightKg: 78.5,
+        id: `init-weight-${uid}`,
+        userId: uid,
+        weightKg: profile.weight,
         waistCm: 84,
         date: TODAY_STR,
         notes: 'Starting baseline measurement',
@@ -156,15 +229,15 @@ function createDefaultState(): AppState {
     waterLogs: [],
     habits: {
       [TODAY_STR]: {
-        id: `habit-${TODAY_STR}`,
-        userId: 'asabea-primary',
+        id: `habit-${TODAY_STR}-${uid}`,
+        userId: uid,
         date: TODAY_STR,
         workout: false,
         water: false,
         healthyMeal: false,
         steps: false,
         sleep: false,
-        noZeroDay: true, // Showed up!
+        noZeroDay: true,
         updatedAt: new Date().toISOString()
       }
     },
@@ -173,7 +246,9 @@ function createDefaultState(): AppState {
     journalEntries: [],
     milestones: defaultMilestones,
     progressPhotos: [],
-    onboardingCompleted: true, // Ready to experience immediately
+    heartRates: [],
+    sleepLogs: [],
+    onboardingCompleted: true,
     activeWorkout: null
   };
 }

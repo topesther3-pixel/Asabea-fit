@@ -5,11 +5,18 @@ import { MilestoneItem } from '../types';
 
 interface MilestonesViewProps {
   milestones: Record<string, MilestoneItem>;
+  userFirstName?: string;
+  personalizedBrand?: string;
   onTriggerConfetti?: () => void;
 }
 
-export const MilestonesView: React.FC<MilestonesViewProps> = ({ milestones }) => {
+export const MilestonesView: React.FC<MilestonesViewProps> = ({
+  milestones,
+  userFirstName,
+  personalizedBrand
+}) => {
   const milestoneList = Object.values(milestones);
+  const brand = personalizedBrand || (userFirstName ? `${userFirstName.toUpperCase()} FIT♡` : 'ASABEA FIT♡');
 
   const fireCelebration = (title: string) => {
     try {
@@ -25,7 +32,8 @@ export const MilestonesView: React.FC<MilestonesViewProps> = ({ milestones }) =>
   };
 
   const handleShareWhatsApp = (m: MilestoneItem) => {
-    const text = `🎉 ASABEA FIT Milestone Unlocked! ✨\n\n🏆 "${m.title}"\n${m.description}\n\n"Small Steps. Big Results. Same girl. Bigger goals."\n#AsabeaFit #AsabeaCreates`;
+    const cleanTag = (userFirstName || 'Friend').replace(/[^a-zA-Z0-9]/g, '');
+    const text = `🎉 ${brand} Milestone Unlocked! ✨\n\n🏆 "${m.title}"\n${m.description}\n\n"Small Steps. Big Results."\n#${cleanTag}Fit #SmallStepsBigResults`;
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };

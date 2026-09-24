@@ -3,7 +3,7 @@ import '../index.css';
 
 export const metadata: Metadata = {
   title: 'ASABEA FIT — Progressive Fitness & Weight Tracker',
-  description: 'A mobile-first fitness PWA for Asabea tracking walks, jogs, hydration, and healthy lifestyle milestones. Small Steps. Big Results.',
+  description: 'A personalized mobile-first fitness PWA tracking walks, jogs, hydration, and healthy lifestyle milestones. Small Steps. Big Results.',
   manifest: '/manifest.json',
   icons: {
     icon: '/icon.svg',

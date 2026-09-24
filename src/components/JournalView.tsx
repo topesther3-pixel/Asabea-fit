@@ -6,6 +6,8 @@ import { TODAY_STR } from '../lib/store';
 interface JournalViewProps {
   entries: JournalEntry[];
   todayMood?: MoodLog;
+  userFirstName?: string;
+  personalizedBrand?: string;
   onSaveJournal: (content: string, prompt: string, date: string) => void;
   onDeleteJournal: (id: string) => void;
 }
@@ -13,9 +15,12 @@ interface JournalViewProps {
 export const JournalView: React.FC<JournalViewProps> = ({
   entries,
   todayMood,
+  userFirstName,
+  personalizedBrand,
   onSaveJournal,
   onDeleteJournal
 }) => {
+  const brand = personalizedBrand || (userFirstName ? `${userFirstName.toUpperCase()} FIT♡` : 'ASABEA FIT♡');
   const [content, setContent] = useState('');
   const [selectedPrompt, setSelectedPrompt] = useState('How did today feel?');
   const [journalDate, setJournalDate] = useState(TODAY_STR);
@@ -55,7 +60,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
           "A healthier me is coming. I showed up."
         </p>
         <span className="text-[10px] uppercase tracking-widest text-[#E96A8D] font-bold mt-1 block font-mono">
-          AsabeaCreates
+          {brand}
         </span>
       </div>
 

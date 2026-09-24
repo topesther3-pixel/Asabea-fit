@@ -5,6 +5,7 @@ import { User } from 'firebase/auth';
 
 interface HeaderProps {
   displayName: string;
+  personalizedBrand?: string;
   dayNumber: number;
   user: User | null;
   isSyncing: boolean;
@@ -14,6 +15,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   displayName,
+  personalizedBrand,
   dayNumber,
   user,
   isSyncing,
@@ -31,7 +33,9 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  const initial = (user?.displayName || displayName || 'A').charAt(0).toUpperCase();
+  const userFirstName = (displayName?.trim()) || (user?.displayName ? user.displayName.split(' ')[0] : 'Friend');
+  const brandTitle = personalizedBrand || (userFirstName ? `${userFirstName.toUpperCase()} FIT♡` : 'ASABEA FIT♡');
+  const initial = userFirstName.charAt(0).toUpperCase() || 'F';
 
   return (
     <header className="sticky top-0 z-40 bg-[#FAF9F6]/95 backdrop-blur-md border-b border-[#FCECEF] px-4 py-3 sm:px-6">
@@ -39,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-black tracking-widest text-[#E96A8D] uppercase font-mono flex items-center gap-1">
-              ASABEA FIT <span className="text-[#E96A8D] text-xs">♡</span>
+              {brandTitle}
             </span>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#E96A8D]" />
             {user ? (
@@ -59,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-[#252525] tracking-tight flex items-center gap-1.5">
-            Hi {user?.displayName ? user.displayName.split(' ')[0] : displayName} <span className="text-xl">👋🏽</span>
+            Hi {userFirstName} <span className="text-xl">👋🏽</span>
           </h1>
           <p className="text-xs font-medium text-[#E96A8D] mt-0.5">
             Small Steps. Big Results. • Day {dayNumber}
@@ -76,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={handleInstallClick}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#FCECEF] text-[#E96A8D] hover:bg-[#E96A8D] hover:text-white transition-all text-xs font-semibold shadow-xs"
-              title="Install Asabea Fit PWA"
+              title={`Install ${brandTitle} PWA`}
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden xs:inline">Install</span>

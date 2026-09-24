@@ -4,11 +4,18 @@ import { AppState } from '../lib/store';
 
 interface WeeklyMonthlySummaryProps {
   state: AppState;
+  userFirstName?: string;
+  personalizedBrand?: string;
 }
 
-export const WeeklyMonthlySummary: React.FC<WeeklyMonthlySummaryProps> = ({ state }) => {
+export const WeeklyMonthlySummary: React.FC<WeeklyMonthlySummaryProps> = ({
+  state,
+  userFirstName,
+  personalizedBrand
+}) => {
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
   const { workouts, weights } = state;
+  const brand = personalizedBrand || (userFirstName ? `${userFirstName.toUpperCase()} FIT♡` : 'ASABEA FIT♡');
 
   const now = new Date();
   const daysThreshold = period === 'weekly' ? 7 : 30;
@@ -98,6 +105,17 @@ export const WeeklyMonthlySummary: React.FC<WeeklyMonthlySummaryProps> = ({ stat
               {filteredWorkouts.length} completed
             </span>
           </div>
+
+          <button
+            onClick={() => {
+              const cleanTag = (userFirstName || 'Friend').replace(/[^a-zA-Z0-9]/g, '');
+              const text = `📊 ${brand} ${period.toUpperCase()} Fitness Report ✨\n\n📍 Total Distance: ${totalKm.toFixed(1)} km\n⏱️ Active Time: ${totalMins} min\n🔥 Calories Burned: ${totalCalories} kcal\n💪 Workouts: ${filteredWorkouts.length}\n\n"Small Steps. Big Results."\n#${cleanTag}Fit #SmallStepsBigResults`;
+              window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+            }}
+            className="w-full py-2.5 rounded-xl bg-[#25D366]/15 text-[#128C7E] font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-[#25D366]/25 transition"
+          >
+            <span>Share {period === 'weekly' ? 'Weekly' : 'Monthly'} Report to WhatsApp</span>
+          </button>
         </div>
       ) : (
         <div className="p-5 rounded-2xl bg-gray-50 border border-dashed border-gray-200 text-center">

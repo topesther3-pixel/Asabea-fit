@@ -20,9 +20,24 @@ import {
   saveStoredState,
   getJourneyDay,
   TODAY_STR,
-  INITIAL_PROFILE
+  INITIAL_PROFILE,
+  createNewUserProfile,
+  createDefaultState
 } from './lib/store';
-import { Workout, WeightEntry, MoodType, EnergyType, PhotoStage, HabitLog, FoodEntry, JournalEntry, ProgressPhoto } from './types';
+import {
+  Workout,
+  WeightEntry,
+  MoodType,
+  EnergyType,
+  PhotoStage,
+  HabitLog,
+  FoodEntry,
+  JournalEntry,
+  ProgressPhoto,
+  HeartRateEntry,
+  SleepEntry,
+  UserProfile
+} from './types';
 import confetti from 'canvas-confetti';
 import { auth, signInWithGoogle, signOutUser } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -43,6 +58,8 @@ import {
   saveMilestoneToFirestore,
   saveProgressPhotoToFirestore,
   deleteProgressPhotoFromFirestore,
+  saveHeartRateToFirestore,
+  saveSleepLogToFirestore,
   subscribeToUserData
 } from './lib/firestoreService';
 
@@ -81,8 +98,8 @@ export function App() {
 
   // Save to local storage whenever state changes
   useEffect(() => {
-    saveStoredState(state);
-  }, [state]);
+    saveStoredState(state, currentUser?.uid);
+  }, [state, currentUser]);
 
   // Register Service Worker for PWA
   useEffect(() => {
@@ -103,47 +120,59 @@ export function App() {
       setCurrentUser(user);
       if (user) {
         setIsSyncing(true);
-        // Subscribe to real-time updates from Firestore
+        // Switch to authenticated user's state
+        const localUserState = loadStoredState(user.uid);
+        setState((prev) => {
+          const baseProfile = localUserState.profile || createNewUserProfile(user);
+          return {
+            ...localUserState,
+            profile: {
+              ...baseProfile,
+              uid: user.uid,
+              userId: user.uid,
+              email: user.email || baseProfile.email,
+              avatar: user.photoURL || baseProfile.avatar || '',
+              firstName: baseProfile.firstName || (user.displayName ? user.displayName.split(' ')[0] : 'Fitness Friend'),
+              displayName: user.displayName || baseProfile.displayName || 'Fitness Friend'
+            }
+          };
+        });
+
+        // Subscribe to real-time updates from Firestore for this user
         const unsubFirestore = subscribeToUserData(user.uid, {
           onProfile: (cloudProfile) => {
             if (cloudProfile) {
-              setState((prev) => ({ ...prev, profile: { ...prev.profile, ...cloudProfile } }));
+              setState((prev) => ({
+                ...prev,
+                profile: {
+                  ...prev.profile,
+                  ...cloudProfile,
+                  uid: user.uid,
+                  userId: user.uid
+                }
+              }));
             }
           },
           onWorkouts: (cloudWorkouts) => {
-            if (cloudWorkouts && cloudWorkouts.length > 0) {
-              setState((prev) => ({ ...prev, workouts: cloudWorkouts }));
-            }
+            setState((prev) => ({ ...prev, workouts: cloudWorkouts || [] }));
           },
           onWeights: (cloudWeights) => {
-            if (cloudWeights && cloudWeights.length > 0) {
-              setState((prev) => ({ ...prev, weights: cloudWeights }));
-            }
+            setState((prev) => ({ ...prev, weights: cloudWeights || [] }));
           },
           onWater: (cloudWater) => {
-            if (cloudWater && cloudWater.length > 0) {
-              setState((prev) => ({ ...prev, waterLogs: cloudWater }));
-            }
+            setState((prev) => ({ ...prev, waterLogs: cloudWater || [] }));
           },
           onHabits: (cloudHabits) => {
-            if (cloudHabits && Object.keys(cloudHabits).length > 0) {
-              setState((prev) => ({ ...prev, habits: { ...prev.habits, ...cloudHabits } }));
-            }
+            setState((prev) => ({ ...prev, habits: cloudHabits || {} }));
           },
           onFood: (cloudFood) => {
-            if (cloudFood && cloudFood.length > 0) {
-              setState((prev) => ({ ...prev, foodEntries: cloudFood }));
-            }
+            setState((prev) => ({ ...prev, foodEntries: cloudFood || [] }));
           },
           onMoods: (cloudMoods) => {
-            if (cloudMoods && Object.keys(cloudMoods).length > 0) {
-              setState((prev) => ({ ...prev, moods: { ...prev.moods, ...cloudMoods } }));
-            }
+            setState((prev) => ({ ...prev, moods: cloudMoods || {} }));
           },
           onJournal: (cloudJournal) => {
-            if (cloudJournal && cloudJournal.length > 0) {
-              setState((prev) => ({ ...prev, journalEntries: cloudJournal }));
-            }
+            setState((prev) => ({ ...prev, journalEntries: cloudJournal || [] }));
           },
           onMilestones: (cloudMilestones) => {
             if (cloudMilestones && Object.keys(cloudMilestones).length > 0) {
@@ -159,40 +188,31 @@ export function App() {
             }
           },
           onPhotos: (cloudPhotos) => {
-            if (cloudPhotos && cloudPhotos.length > 0) {
-              setState((prev) => ({ ...prev, progressPhotos: cloudPhotos }));
-            }
+            setState((prev) => ({ ...prev, progressPhotos: cloudPhotos || [] }));
+          },
+          onHeartRates: (cloudHeartRates) => {
+            setState((prev) => ({ ...prev, heartRates: cloudHeartRates || [] }));
+          },
+          onSleepLogs: (cloudSleepLogs) => {
+            setState((prev) => ({ ...prev, sleepLogs: cloudSleepLogs || [] }));
           }
         });
 
-        // If newly signed in and we have local data, sync initial profile & records to Firestore
-        if (!isMigratingRef.current) {
-          isMigratingRef.current = true;
-          try {
-            await syncProfileToFirestore(
-              {
-                ...state.profile,
-                displayName: user.displayName || state.profile.displayName,
-                email: user.email || state.profile.email,
-                userId: user.uid
-              },
-              user.uid
-            );
-            // Migrate any local workouts that don't have user.uid
-            state.workouts.forEach((w) => {
-              if (w.userId !== user.uid) {
-                saveWorkoutToFirestore({ ...w, userId: user.uid }, user.uid);
-              }
-            });
-            // Migrate local weights
-            state.weights.forEach((wt) => {
-              if (wt.userId !== user.uid) {
-                saveWeightToFirestore({ ...wt, userId: user.uid }, user.uid);
-              }
-            });
-          } catch (e) {
-            console.warn('Initial cloud migration notice:', e);
-          }
+        // Sync initial profile to users/{user.uid} in Firestore if needed
+        try {
+          await syncProfileToFirestore(
+            {
+              ...state.profile,
+              uid: user.uid,
+              userId: user.uid,
+              displayName: user.displayName || state.profile.displayName,
+              firstName: state.profile.firstName || (user.displayName ? user.displayName.split(' ')[0] : 'Fitness Friend'),
+              email: user.email || state.profile.email
+            },
+            user.uid
+          );
+        } catch (e) {
+          console.warn('Initial cloud sync notice:', e);
         }
 
         setIsSyncing(false);
@@ -200,6 +220,9 @@ export function App() {
         return () => {
           unsubFirestore();
         };
+      } else {
+        // User logged out: restore clean guest state so previous user data is never leaked
+        setState(createDefaultState());
       }
     });
 
@@ -443,7 +466,8 @@ export function App() {
       .filter((w) => w.date === TODAY_STR)
       .reduce((acc, w) => acc + w.amountMl, 0);
 
-    const isGoalMet = currentTotal + amountMl >= state.profile.waterDailyGoalMl;
+    const waterGoal = state.profile.dailyWaterGoal || state.profile.waterDailyGoalMl || 2500;
+    const isGoalMet = currentTotal + amountMl >= waterGoal;
     const updatedHabit = {
       ...todayHabit,
       water: isGoalMet ? true : todayHabit.water,
@@ -596,6 +620,47 @@ export function App() {
     }
   };
 
+  const handleSaveHeartRate = (bpm: number, condition: string) => {
+    const entryId = `hr-${Date.now()}`;
+    const uid = currentUser?.uid || state.profile.userId || 'asabea-primary';
+    const newEntry: HeartRateEntry = {
+      id: entryId,
+      userId: uid,
+      bpm,
+      condition,
+      date: TODAY_STR,
+      createdAt: new Date().toISOString()
+    };
+    setState((prev) => ({
+      ...prev,
+      heartRates: [newEntry, ...(prev.heartRates || []).filter((h) => h.id !== entryId)]
+    }));
+    if (currentUser) {
+      saveHeartRateToFirestore(newEntry, currentUser.uid);
+    }
+  };
+
+  const handleSaveSleep = (hours: number, minutes: number, quality: string) => {
+    const entryId = `sleep-${Date.now()}`;
+    const uid = currentUser?.uid || state.profile.userId || 'asabea-primary';
+    const newEntry: SleepEntry = {
+      id: entryId,
+      userId: uid,
+      hours,
+      minutes,
+      quality,
+      date: TODAY_STR,
+      createdAt: new Date().toISOString()
+    };
+    setState((prev) => ({
+      ...prev,
+      sleepLogs: [newEntry, ...(prev.sleepLogs || []).filter((s) => s.id !== entryId)]
+    }));
+    if (currentUser) {
+      saveSleepLogToFirestore(newEntry, currentUser.uid);
+    }
+  };
+
   const handleUpdateProfile = (updated: Partial<typeof state.profile>) => {
     const newProfile = {
       ...state.profile,
@@ -613,16 +678,30 @@ export function App() {
 
   const handleResetData = () => {
     if (window.confirm('Reset all demo data back to baseline?')) {
+      const key = currentUser?.uid ? `asabea_fit_data_${currentUser.uid}` : 'asabea_fit_data_v1';
+      localStorage.removeItem(key);
       localStorage.removeItem('asabea_fit_data_v1');
       window.location.reload();
     }
   };
 
+  // Personalized brand identity dynamically derived from authenticated user's profile
+  const effectiveFirstName =
+    state.profile.firstName ||
+    (currentUser?.displayName ? currentUser.displayName.split(' ')[0] : '') ||
+    (state.profile.displayName && state.profile.displayName !== 'Fitness Friend' ? state.profile.displayName.split(' ')[0] : 'Fitness Friend');
+
+  const personalizedBrand =
+    effectiveFirstName && effectiveFirstName !== 'Fitness Friend'
+      ? `${effectiveFirstName.toUpperCase()} FIT♡`
+      : 'ASABEA FIT♡';
+
   return (
     <div className="min-h-screen bg-[#FAF9F6] text-[#252525] font-sans antialiased selection:bg-[#FCECEF] selection:text-[#E96A8D]">
       {/* Top Header */}
       <Header
-        displayName={state.profile.displayName}
+        displayName={effectiveFirstName}
+        personalizedBrand={personalizedBrand}
         dayNumber={dayNumber}
         user={currentUser}
         isSyncing={isSyncing}
@@ -648,6 +727,8 @@ export function App() {
             onOpenMoodModal={() => {
               setCurrentTab('journal');
             }}
+            onSaveHeartRate={handleSaveHeartRate}
+            onSaveSleep={handleSaveSleep}
             isWorkoutActive={isWorkoutActive}
             activeWorkoutInfo={activeWorkoutInfo}
           />
@@ -659,7 +740,9 @@ export function App() {
             workouts={state.workouts}
             onSaveWorkout={handleSaveWorkout}
             onDeleteWorkout={handleDeleteWorkout}
-            userId={currentUser?.uid || 'asabea-primary'}
+            userId={currentUser?.uid || state.profile.userId || 'guest-primary'}
+            userFirstName={effectiveFirstName}
+            personalizedBrand={personalizedBrand}
             onActiveStateChange={handleActiveWorkoutChange}
             hydrationReminderEnabled={state.profile.workoutHydrationReminderEnabled !== false}
             hydrationReminderIntervalMin={state.profile.workoutHydrationReminderIntervalMin || 30}
@@ -684,7 +767,7 @@ export function App() {
 
             <WaterTracker
               waterLogs={state.waterLogs}
-              dailyGoalMl={state.profile.waterDailyGoalMl}
+              dailyGoalMl={state.profile.dailyWaterGoal || state.profile.waterDailyGoalMl || 2500}
               onAddWater={handleAddWater}
               onResetTodayWater={handleResetTodayWater}
             />
@@ -694,9 +777,17 @@ export function App() {
               onToggleHabit={handleToggleHabit}
             />
 
-            <MilestonesView milestones={state.milestones} />
+            <MilestonesView
+              milestones={state.milestones}
+              userFirstName={effectiveFirstName}
+              personalizedBrand={personalizedBrand}
+            />
 
-            <WeeklyMonthlySummary state={state} />
+            <WeeklyMonthlySummary
+              state={state}
+              userFirstName={effectiveFirstName}
+              personalizedBrand={personalizedBrand}
+            />
 
             <JourneyTimeline state={state} />
           </div>
@@ -718,6 +809,8 @@ export function App() {
             <JournalView
               entries={state.journalEntries}
               todayMood={state.moods[TODAY_STR]}
+              userFirstName={effectiveFirstName}
+              personalizedBrand={personalizedBrand}
               onSaveJournal={handleSaveJournal}
               onDeleteJournal={handleDeleteJournal}
             />
@@ -727,24 +820,28 @@ export function App() {
         {currentTab === 'profile' && (
           <div className="max-w-xl mx-auto px-4 pt-2 pb-24 space-y-6">
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4 text-center">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FCECEF] text-[#E96A8D] font-extrabold text-[11px] tracking-wider uppercase font-mono mx-auto">
+                <span>{personalizedBrand}</span>
+              </div>
+
               <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#E96A8D] to-[#FF8FA8] text-white flex items-center justify-center font-black text-2xl mx-auto shadow-lg shadow-[#E96A8D]/20 overflow-hidden">
                 {currentUser?.photoURL ? (
                   <img
                     src={currentUser.photoURL}
-                    alt={currentUser.displayName || 'Profile'}
+                    alt={currentUser.displayName || effectiveFirstName || 'Profile'}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <span>{state.profile.displayName.charAt(0).toUpperCase()}</span>
+                  <span>{(effectiveFirstName || state.profile.displayName || 'F').charAt(0).toUpperCase()}</span>
                 )}
               </div>
               <div>
-                <h2 className="text-xl font-black text-[#252525]">{currentUser?.displayName || state.profile.displayName}</h2>
+                <h2 className="text-xl font-black text-[#252525]">{currentUser?.displayName || state.profile.displayName || effectiveFirstName}</h2>
                 <p className="text-xs text-[#E96A8D] font-bold">
-                  Day {dayNumber} of healthier-me journey
+                  Day {dayNumber} of healthier-me journey • Small Steps. Big Results.
                 </p>
-                <p className="text-xs text-gray-400 mt-1">{currentUser?.email || state.profile.email}</p>
+                <p className="text-xs text-gray-400 mt-1">{currentUser?.email || state.profile.email || (currentUser ? `users/${currentUser.uid}` : '')}</p>
               </div>
 
               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100">
@@ -770,7 +867,11 @@ export function App() {
               </button>
             </div>
 
-            <MilestonesView milestones={state.milestones} />
+            <MilestonesView
+              milestones={state.milestones}
+              userFirstName={effectiveFirstName}
+              personalizedBrand={personalizedBrand}
+            />
           </div>
         )}
       </main>

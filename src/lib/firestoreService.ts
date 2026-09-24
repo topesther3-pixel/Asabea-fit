@@ -19,6 +19,8 @@ import {
   MoodLog,
   JournalEntry,
   ProgressPhoto,
+  HeartRateEntry,
+  SleepEntry,
   MilestoneItem
 } from '../types';
 
@@ -42,29 +44,48 @@ export function cleanFirestorePayload<T extends Record<string, any>>(obj: T): T 
   return cleaned as T;
 }
 
-// Sync Profile
+// Sync Profile - writes to users/{userId} as well as profiles/{userId}
 export async function syncProfileToFirestore(profile: UserProfile, userId: string) {
   if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
     return;
   }
-  const path = `profiles/${userId}`;
+  const usersPath = `users/${userId}`;
   try {
+    const rawName = profile.displayName?.trim() || profile.firstName?.trim() || 'Fitness Friend';
+    const firstName = profile.firstName?.trim() || rawName.split(' ')[0] || 'Fitness Friend';
+    const personalizedBrand = `${firstName.toUpperCase()} FIT♡`;
     const payload = {
+      uid: userId,
       userId,
-      displayName: profile.displayName || 'Asabea',
+      firstName,
+      displayName: rawName,
+      personalizedBrand,
       email: profile.email || auth.currentUser?.email || '',
-      startingWeight: Number(profile.startingWeight) || 78.5,
-      goalWeight: Number(profile.goalWeight) || 68.0,
-      currentWeight: Number(profile.currentWeight) || profile.startingWeight,
-      heightCm: Number(profile.heightCm) || 168,
-      journeyStartDate: profile.journeyStartDate,
-      waterDailyGoalMl: Number(profile.waterDailyGoalMl) || 2500,
+      age: Number(profile.age) || 26,
+      height: Number(profile.height || profile.heightCm) || 168,
+      heightCm: Number(profile.heightCm || profile.height) || 168,
+      weight: Number(profile.weight || profile.currentWeight || profile.startingWeight) || 70,
+      startingWeight: Number(profile.startingWeight || profile.weight) || 70,
+      goalWeight: Number(profile.goalWeight) || 65,
+      currentWeight: Number(profile.currentWeight || profile.weight || profile.startingWeight) || 70,
+      activityLevel: profile.activityLevel || 'Moderately Active',
+      dailyStepGoal: Number(profile.dailyStepGoal) || 10000,
+      dailyWaterGoal: Number(profile.dailyWaterGoal || profile.waterDailyGoalMl) || 2500,
+      waterDailyGoalMl: Number(profile.waterDailyGoalMl || profile.dailyWaterGoal) || 2500,
+      dailyCalorieGoal: Number(profile.dailyCalorieGoal) || 450,
+      dailyActiveMinutesGoal: Number(profile.dailyActiveMinutesGoal) || 30,
+      avatar: profile.avatar || auth.currentUser?.photoURL || '',
+      journeyStartDate: profile.journeyStartDate || new Date().toISOString().split('T')[0],
+      workoutHydrationReminderEnabled: profile.workoutHydrationReminderEnabled !== false,
+      workoutHydrationReminderIntervalMin: Number(profile.workoutHydrationReminderIntervalMin) || 30,
       createdAt: profile.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    await setDoc(doc(db, 'profiles', userId), cleanFirestorePayload(payload), { merge: true });
+    const cleaned = cleanFirestorePayload(payload);
+    await setDoc(doc(db, 'users', userId), cleaned, { merge: true });
+    await setDoc(doc(db, 'profiles', userId), cleaned, { merge: true });
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    handleFirestoreError(error, OperationType.WRITE, usersPath);
   }
 }
 
@@ -293,6 +314,63 @@ export async function deleteProgressPhotoFromFirestore(photoId: string) {
   }
 }
 
+// Heart Rate Logs
+export async function saveHeartRateToFirestore(entry: HeartRateEntry, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
+  const path = `heartRates/${entry.id}`;
+  try {
+    const payload = {
+      ...entry,
+      userId,
+      bpm: Number(entry.bpm)
+    };
+    await setDoc(doc(db, 'heartRates', entry.id), cleanFirestorePayload(payload));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteHeartRateFromFirestore(entryId: string) {
+  if (!auth?.currentUser) return;
+  const path = `heartRates/${entryId}`;
+  try {
+    await deleteDoc(doc(db, 'heartRates', entryId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+// Sleep Logs
+export async function saveSleepLogToFirestore(entry: SleepEntry, userId: string) {
+  if (!auth?.currentUser || auth.currentUser.uid !== userId || userId === 'asabea-primary') {
+    return;
+  }
+  const path = `sleepLogs/${entry.id}`;
+  try {
+    const payload = {
+      ...entry,
+      userId,
+      hours: Number(entry.hours),
+      minutes: Number(entry.minutes)
+    };
+    await setDoc(doc(db, 'sleepLogs', entry.id), cleanFirestorePayload(payload));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteSleepLogFromFirestore(entryId: string) {
+  if (!auth?.currentUser) return;
+  const path = `sleepLogs/${entryId}`;
+  try {
+    await deleteDoc(doc(db, 'sleepLogs', entryId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
 // Real-time listener subscriber
 export function subscribeToUserData(
   userId: string,
@@ -307,22 +385,35 @@ export function subscribeToUserData(
     onJournal?: (journal: JournalEntry[]) => void;
     onMilestones?: (milestones: Record<string, { unlocked: boolean; unlockedAt?: string }>) => void;
     onPhotos?: (photos: ProgressPhoto[]) => void;
+    onHeartRates?: (heartRates: HeartRateEntry[]) => void;
+    onSleepLogs?: (sleepLogs: SleepEntry[]) => void;
   }
 ) {
   const unsubscribers: (() => void)[] = [];
 
-  // Profile listener
-  const profilePath = `profiles/${userId}`;
-  const unsubProfile = onSnapshot(
-    doc(db, 'profiles', userId),
+  // Profile listener (primary: users/{userId}, fallback: profiles/{userId})
+  const userPath = `users/${userId}`;
+  const unsubUser = onSnapshot(
+    doc(db, 'users', userId),
     (snapshot) => {
       if (snapshot.exists()) {
         callbacks.onProfile?.(snapshot.data() as UserProfile);
+      } else {
+        // Fallback to profiles/{userId}
+        onSnapshot(
+          doc(db, 'profiles', userId),
+          (profSnap) => {
+            if (profSnap.exists()) {
+              callbacks.onProfile?.(profSnap.data() as UserProfile);
+            }
+          },
+          () => {}
+        );
       }
     },
-    (err) => handleFirestoreError(err, OperationType.GET, profilePath)
+    (err) => handleFirestoreError(err, OperationType.GET, userPath)
   );
-  unsubscribers.push(unsubProfile);
+  unsubscribers.push(unsubUser);
 
   // Workouts
   const workoutsPath = 'workouts';
@@ -467,6 +558,36 @@ export function subscribeToUserData(
     (err) => handleFirestoreError(err, OperationType.LIST, photosPath)
   );
   unsubscribers.push(unsubPhotos);
+
+  // Heart Rates
+  const heartRatesPath = 'heartRates';
+  const heartRatesQuery = query(collection(db, 'heartRates'), where('userId', '==', userId));
+  const unsubHeartRates = onSnapshot(
+    heartRatesQuery,
+    (snapshot) => {
+      const items: HeartRateEntry[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as HeartRateEntry));
+      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      callbacks.onHeartRates?.(items);
+    },
+    (err) => handleFirestoreError(err, OperationType.LIST, heartRatesPath)
+  );
+  unsubscribers.push(unsubHeartRates);
+
+  // Sleep Logs
+  const sleepLogsPath = 'sleepLogs';
+  const sleepLogsQuery = query(collection(db, 'sleepLogs'), where('userId', '==', userId));
+  const unsubSleepLogs = onSnapshot(
+    sleepLogsQuery,
+    (snapshot) => {
+      const items: SleepEntry[] = [];
+      snapshot.forEach((docSnap) => items.push(docSnap.data() as SleepEntry));
+      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      callbacks.onSleepLogs?.(items);
+    },
+    (err) => handleFirestoreError(err, OperationType.LIST, sleepLogsPath)
+  );
+  unsubscribers.push(unsubSleepLogs);
 
   return () => {
     unsubscribers.forEach((unsub) => unsub());

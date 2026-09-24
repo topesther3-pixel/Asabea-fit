@@ -31,6 +31,8 @@ interface HomeDashboardProps {
   onOpenWeightModal: () => void;
   onOpenFoodModal: () => void;
   onOpenMoodModal: () => void;
+  onSaveHeartRate?: (bpm: number, condition: string) => void;
+  onSaveSleep?: (hours: number, minutes: number, quality: string) => void;
   isWorkoutActive?: boolean;
   activeWorkoutInfo?: { type: WorkoutType; durationSec: number; distanceKm: number } | null;
 }
@@ -101,11 +103,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onOpenWeightModal,
   onOpenFoodModal,
   onOpenMoodModal,
+  onSaveHeartRate,
+  onSaveSleep,
   isWorkoutActive = false,
   activeWorkoutInfo
 }) => {
   const [avatarView, setAvatarView] = useState<'animated' | 'portrait'>('animated');
-  const { profile, workouts, weights, waterLogs, habits } = state;
+  const { profile, workouts, weights, waterLogs, habits, heartRates = [], sleepLogs = [] } = state;
 
   // Real recorded metrics from user's workouts today
   const todayWorkouts = workouts.filter((w) => w.date === TODAY_STR);
@@ -116,74 +120,64 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const totalWorkoutDistanceKm = todayWorkouts.reduce((acc, w) => acc + w.distanceKm, 0);
   const totalWorkoutCalories = todayWorkouts.reduce((acc, w) => acc + w.calories, 0);
 
+  // Outdoor walking specific calculation
+  const outdoorWalkingWorkouts = todayWorkouts.filter((w) => w.type === 'WALK');
+  const outdoorWalkingDistanceKm = outdoorWalkingWorkouts.reduce((acc, w) => acc + w.distanceKm, 0);
+  const outdoorWalkingCalories = outdoorWalkingWorkouts.reduce((acc, w) => acc + w.calories, 0);
+
   // Steps: Real steps calculated from recorded workouts (average 1,300 steps per km) or 0 if no workout recorded
   const stepsFromWorkouts = totalWorkoutDistanceKm > 0 ? Math.round(totalWorkoutDistanceKm * 1300) : 0;
-  const stepTarget = 8000;
+  const stepTarget = profile.dailyStepGoal || 10000;
   const stepProgress = Math.min(100, Math.round((stepsFromWorkouts / stepTarget) * 100));
 
-  const calorieTarget = 430;
+  const calorieTarget = profile.dailyCalorieGoal || 450;
   const calorieProgress = Math.min(100, Math.round((totalWorkoutCalories / calorieTarget) * 100));
 
-  const activeTargetMin = 30;
+  const activeTargetMin = profile.dailyActiveMinutesGoal || 30;
   const activeProgress = Math.min(100, Math.round((totalWorkoutMinutes / activeTargetMin) * 100));
 
   // Hydration real data
   const todayWaterTotalMl = waterLogs
     .filter((w) => w.date === TODAY_STR)
     .reduce((acc, w) => acc + w.amountMl, 0);
-  const waterGoalMl = profile.waterDailyGoalMl || 2500;
+  const waterGoalMl = profile.dailyWaterGoal || profile.waterDailyGoalMl || 2500;
   const waterProgress = Math.min(100, Math.round((todayWaterTotalMl / waterGoalMl) * 100));
 
   // Weight real data
   const todayWeightEntry = weights.find((w) => w.date === TODAY_STR);
   const latestWeight =
-    todayWeightEntry?.weightKg ?? weights[0]?.weightKg ?? profile.currentWeight ?? profile.startingWeight;
+    todayWeightEntry?.weightKg ?? weights[0]?.weightKg ?? profile.weight ?? profile.currentWeight ?? profile.startingWeight;
 
   const todayHabit = habits[TODAY_STR];
 
   // Weight Journey calculations
-  const startWeight = profile.startingWeight;
-  const goalWeight = profile.goalWeight;
+  const startWeight = profile.startingWeight || profile.weight || 70;
+  const goalWeight = profile.goalWeight || 65;
   const totalToLose = Math.max(0.1, startWeight - goalWeight);
   const lostSoFar = Math.max(0, startWeight - latestWeight);
   const progressPercent = Math.min(100, Math.round((lostSoFar / totalToLose) * 100));
 
-  // Local storage for real Sleep and Heart Rate logs (so user can record actual measurements without inventing fake data)
-  const [sleepData, setSleepData] = useState<{ hours: number; minutes: number; quality?: string } | null>(null);
-  const [heartRateData, setHeartRateData] = useState<{ bpm: number; condition?: string } | null>(null);
+  // Heart Rate & Sleep data from user's authenticated records
+  const todayHeartRate = heartRates.find((h) => h.date === TODAY_STR) || heartRates[0] || null;
+  const todaySleep = sleepLogs.find((s) => s.date === TODAY_STR) || sleepLogs[0] || null;
 
-  // Modals for optional manual entry of real Sleep and Heart Rate
+  // Modals for manual entry of real Sleep and Heart Rate
   const [showSleepModal, setShowSleepModal] = useState(false);
   const [showHeartRateModal, setShowHeartRateModal] = useState(false);
-  const [inputSleepHours, setInputSleepHours] = useState('7');
-  const [inputSleepMinutes, setInputSleepMinutes] = useState('30');
-  const [inputSleepQuality, setInputSleepQuality] = useState('Good');
-  const [inputBpm, setInputBpm] = useState('72');
-  const [inputBpmCondition, setInputBpmCondition] = useState('Resting');
-
-  useEffect(() => {
-    try {
-      const storedSleep = localStorage.getItem(`asabea_fit_sleep_${TODAY_STR}`);
-      if (storedSleep) {
-        setSleepData(JSON.parse(storedSleep));
-      }
-      const storedHeart = localStorage.getItem(`asabea_fit_heart_${TODAY_STR}`);
-      if (storedHeart) {
-        setHeartRateData(JSON.parse(storedHeart));
-      }
-    } catch (e) {
-      console.error('Error loading local health data:', e);
-    }
-  }, []);
+  const [inputSleepHours, setInputSleepHours] = useState(todaySleep ? todaySleep.hours.toString() : '7');
+  const [inputSleepMinutes, setInputSleepMinutes] = useState(todaySleep ? todaySleep.minutes.toString() : '30');
+  const [inputSleepQuality, setInputSleepQuality] = useState(todaySleep?.quality || 'Good');
+  const [inputBpm, setInputBpm] = useState(todayHeartRate ? todayHeartRate.bpm.toString() : '72');
+  const [inputBpmCondition, setInputBpmCondition] = useState(todayHeartRate?.condition || 'Resting');
 
   const handleSaveSleep = (e: React.FormEvent) => {
     e.preventDefault();
     const hours = parseFloat(inputSleepHours) || 0;
     const minutes = parseInt(inputSleepMinutes, 10) || 0;
     if (hours > 0 || minutes > 0) {
-      const data = { hours, minutes, quality: inputSleepQuality };
-      setSleepData(data);
-      localStorage.setItem(`asabea_fit_sleep_${TODAY_STR}`, JSON.stringify(data));
+      if (onSaveSleep) {
+        onSaveSleep(hours, minutes, inputSleepQuality);
+      }
     }
     setShowSleepModal(false);
   };
@@ -192,9 +186,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     e.preventDefault();
     const bpm = parseInt(inputBpm, 10) || 0;
     if (bpm > 30 && bpm < 250) {
-      const data = { bpm, condition: inputBpmCondition };
-      setHeartRateData(data);
-      localStorage.setItem(`asabea_fit_heart_${TODAY_STR}`, JSON.stringify(data));
+      if (onSaveHeartRate) {
+        onSaveHeartRate(bpm, inputBpmCondition);
+      }
     }
     setShowHeartRateModal(false);
   };
@@ -220,7 +214,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   if (todayHabit?.healthyMeal || state.foodEntries.some((f) => f.date === TODAY_STR)) {
     recordedWins.push({ label: 'I nourished myself with a healthy meal', done: true });
   }
-  if (sleepData || todayHabit?.sleep) {
+  if (todaySleep || todayHabit?.sleep) {
     recordedWins.push({ label: 'I prioritized rest and sleep', done: true });
   }
 
@@ -235,7 +229,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     day: 'numeric'
   }).format(new Date());
 
-  const firstName = profile.displayName ? profile.displayName.split(' ')[0] : 'Asabea';
+  const firstName = profile.firstName || (profile.displayName ? profile.displayName.split(' ')[0] : 'Fitness Friend');
+  const personalizedBrand = `${(profile.firstName || (profile.displayName ? profile.displayName.split(' ')[0] : 'ASABEA')).toUpperCase()} FIT♡`;
 
   return (
     <div className="space-y-4 pb-24 max-w-xl mx-auto px-4 pt-1">
@@ -244,9 +239,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* ======================================================== */}
       <div className="bg-white rounded-3xl p-5 border border-[#FCECEF] shadow-xs">
         <div className="flex items-center justify-between">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FCECEF] text-[#E96A8D] font-extrabold text-[11px] tracking-wider uppercase">
-            <span>ASABEA FIT</span>
-            <span className="text-xs">♡</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FCECEF] text-[#E96A8D] font-extrabold text-[11px] tracking-wider uppercase font-mono">
+            <span>{personalizedBrand}</span>
           </div>
 
           {/* Date and Weather */}
@@ -300,7 +294,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-[#E96A8D] font-bold mt-0.5">
-                Walking with Asabea 💗 • {activeWorkoutInfo?.distanceKm ? activeWorkoutInfo.distanceKm.toFixed(2) : '0.00'} km
+                Moving with {firstName} 💗 • {activeWorkoutInfo?.distanceKm ? activeWorkoutInfo.distanceKm.toFixed(2) : '0.00'} km
               </p>
             </div>
           </div>
@@ -411,13 +405,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                       }}
                     />
                     <span className="text-[10px] font-extrabold text-[#E96A8D] mt-1 text-center">
-                      {isWorkoutActive ? 'Walking with you!' : 'Tap Asabea to walk 💗'}
+                      {isWorkoutActive ? 'Moving with you!' : `Walk with ${firstName} 💗`}
                     </span>
                   </div>
                 ) : (
                   <img
                     src="/asabea_fitness_avatar.jpg"
-                    alt="ASABEA FIT 3D Fitness Avatar"
+                    alt={`${personalizedBrand} Fitness Avatar`}
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-contain transform transition-transform duration-300 group-hover:scale-105"
                     onError={(e) => {
@@ -447,7 +441,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   onClick={onStartWorkout}
                   className="px-2.5 py-1 rounded-full bg-white border border-[#FCECEF] shadow-2xs hover:bg-[#FCECEF] text-[9px] font-black text-[#E96A8D] inline-flex items-center gap-1 transition"
                 >
-                  <span>{isWorkoutActive ? 'View Map' : 'Walk with Asabea 💗'}</span>
+                  <span>{isWorkoutActive ? 'View Map' : `Walk with ${firstName} 💗`}</span>
                 </button>
               </div>
             </div>
@@ -512,7 +506,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <Moon className="w-4 h-4" />
           </div>
           <span className="text-[11px] font-extrabold text-[#252525]">Sleep</span>
-          <span className="text-[9px] text-gray-400 font-semibold">{sleepData ? `${sleepData.hours}h` : 'Log'}</span>
+          <span className="text-[9px] text-gray-400 font-semibold">{todaySleep ? `${todaySleep.hours}h` : 'Log'}</span>
         </button>
 
         <button
@@ -523,7 +517,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <Heart className="w-4 h-4" />
           </div>
           <span className="text-[11px] font-extrabold text-[#252525]">Heart</span>
-          <span className="text-[9px] text-gray-400 font-semibold">{heartRateData ? `${heartRateData.bpm}` : 'BPM'}</span>
+          <span className="text-[9px] text-gray-400 font-semibold">{todayHeartRate ? `${todayHeartRate.bpm}` : 'BPM'}</span>
         </button>
       </div>
 
@@ -555,7 +549,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-[#252525]">Exercise</h3>
-                <span className="text-[11px] text-gray-400 font-medium">Today's Workouts</span>
+                <span className="text-[11px] text-gray-400 font-medium">
+                  {outdoorWalkingDistanceKm > 0
+                    ? `${outdoorWalkingDistanceKm.toFixed(2)} km Outdoor Walking`
+                    : "Today's Workouts"}
+                </span>
               </div>
             </div>
 
@@ -578,7 +576,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   >
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-0.5 rounded-lg bg-[#E96A8D] text-white text-[10px] font-black uppercase tracking-wider">
-                        {w.type}
+                        {w.type === 'WALK' ? 'Outdoor Walk' : w.type}
                       </span>
                       <span className="text-xs font-bold text-[#252525]">
                         {w.distanceKm.toFixed(2)} km
@@ -625,13 +623,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 </div>
               </div>
 
-              {sleepData ? (
+              {todaySleep ? (
                 <div>
                   <div className="text-lg font-black text-[#252525]">
-                    {sleepData.hours}h {sleepData.minutes}m
+                    {todaySleep.hours}h {todaySleep.minutes}m
                   </div>
                   <div className="text-[11px] font-semibold text-[#3B82F6]">
-                    {sleepData.quality || 'Recorded sleep'}
+                    {todaySleep.quality || 'Recorded sleep'}
                   </div>
                 </div>
               ) : (
@@ -648,7 +646,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               onClick={() => setShowSleepModal(true)}
               className="mt-3 w-full py-1.5 rounded-xl bg-[#EFF6FF] text-[#3B82F6] text-[11px] font-bold hover:bg-[#DBEAFE] active:scale-95 transition"
             >
-              {sleepData ? 'Update Sleep' : '+ Log Sleep'}
+              {todaySleep ? 'Update Sleep' : '+ Log Sleep'}
             </button>
           </div>
 
@@ -662,13 +660,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 </div>
               </div>
 
-              {heartRateData ? (
+              {todayHeartRate ? (
                 <div>
                   <div className="text-lg font-black text-[#252525]">
-                    {heartRateData.bpm} <span className="text-xs font-bold text-gray-500">bpm</span>
+                    {todayHeartRate.bpm} <span className="text-xs font-bold text-gray-500">bpm</span>
                   </div>
                   <div className="text-[11px] font-semibold text-[#E96A8D]">
-                    {heartRateData.condition || 'Resting'}
+                    {todayHeartRate.condition || 'Resting'}
                   </div>
                 </div>
               ) : (
@@ -685,7 +683,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               onClick={() => setShowHeartRateModal(true)}
               className="mt-3 w-full py-1.5 rounded-xl bg-[#FCECEF] text-[#E96A8D] text-[11px] font-bold hover:bg-[#fbdbe3] active:scale-95 transition"
             >
-              {heartRateData ? 'Update BPM' : '+ Log BPM'}
+              {todayHeartRate ? 'Update BPM' : '+ Log BPM'}
             </button>
           </div>
 
@@ -753,7 +751,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     <span className="text-xs font-semibold text-gray-500">km</span>
                   </div>
                   <div className="text-[11px] font-bold text-[#E96A8D]">
-                    Today's distance
+                    {outdoorWalkingDistanceKm > 0
+                      ? `${outdoorWalkingDistanceKm.toFixed(2)} km outdoor walk`
+                      : "Today's distance"}
                   </div>
                 </div>
               ) : (
@@ -792,14 +792,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 <div className="text-xs font-bold text-gray-400">No data yet</div>
               )}
               <div className="text-[10px] text-gray-400">
-                Calories from recorded workouts
+                {totalWorkoutCalories > 0
+                  ? (outdoorWalkingCalories > 0
+                      ? `${outdoorWalkingCalories} kcal from outdoor walking`
+                      : 'Calories from recorded workouts')
+                  : 'Calories from recorded workouts'}
               </div>
             </div>
           </div>
 
           <div className="text-right">
             <span className="text-xs font-extrabold text-[#E96A8D] bg-[#FCECEF] px-3 py-1 rounded-full">
-              {totalWorkoutCalories > 0 ? `${totalWorkoutCalories} kcal burned` : '0 / 430 kcal'}
+              {totalWorkoutCalories > 0 ? `${totalWorkoutCalories} kcal burned` : `0 / ${calorieTarget} kcal`}
             </span>
           </div>
         </div>

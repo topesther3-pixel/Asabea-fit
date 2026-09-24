@@ -146,6 +146,65 @@
       },
       "required": ["userId", "stage", "photoUrl", "date", "createdAt"]
     },
+    "User": {
+      "title": "User",
+      "description": "Personalized multi-user profile for ASABEA FIT",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "firstName": { "type": "string", "maxLength": 100 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "personalizedBrand": { "type": "string", "maxLength": 60 },
+        "email": { "type": "string", "maxLength": 150 },
+        "age": { "type": "number" },
+        "height": { "type": "number" },
+        "heightCm": { "type": "number" },
+        "weight": { "type": "number" },
+        "startingWeight": { "type": "number" },
+        "goalWeight": { "type": "number" },
+        "activityLevel": { "type": "string", "maxLength": 50 },
+        "dailyStepGoal": { "type": "number" },
+        "dailyWaterGoal": { "type": "number" },
+        "waterDailyGoalMl": { "type": "number" },
+        "dailyCalorieGoal": { "type": "number" },
+        "dailyActiveMinutesGoal": { "type": "number" },
+        "avatar": { "type": "string", "maxLength": 1000 },
+        "journeyStartDate": { "type": "string", "maxLength": 40 },
+        "workoutHydrationReminderEnabled": { "type": "boolean" },
+        "workoutHydrationReminderIntervalMin": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 40 },
+        "updatedAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["uid", "firstName", "email", "createdAt"]
+    },
+    "HeartRateEntry": {
+      "title": "HeartRateEntry",
+      "description": "Recorded heart rate in BPM",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "bpm": { "type": "number" },
+        "condition": { "type": "string", "maxLength": 50 },
+        "date": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "bpm", "date", "createdAt"]
+    },
+    "SleepEntry": {
+      "title": "SleepEntry",
+      "description": "Recorded sleep duration and quality",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "hours": { "type": "number" },
+        "minutes": { "type": "number" },
+        "quality": { "type": "string", "maxLength": 50 },
+        "date": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["userId", "hours", "date", "createdAt"]
+    },
     "LiveLocation": {
       "title": "LiveLocation",
       "description": "Real-time location coordinate and status for workout tracking and Safe Jog",
@@ -170,6 +229,10 @@
     "/profiles/{userId}": {
       "schema": "UserProfile",
       "description": "User profile with initial and target measurements"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Personalized user profile with individual fitness targets"
     },
     "/workouts/{workoutId}": {
       "schema": "Workout",
@@ -206,6 +269,14 @@
     "/progressPhotos/{photoId}": {
       "schema": "ProgressPhoto",
       "description": "Private user progress photos"
+    },
+    "/heartRates/{entryId}": {
+      "schema": "HeartRateEntry",
+      "description": "User heart rate logs in BPM"
+    },
+    "/sleepLogs/{entryId}": {
+      "schema": "SleepEntry",
+      "description": "User sleep duration and quality logs"
     },
     "/live_locations/{userId}": {
       "schema": "LiveLocation",

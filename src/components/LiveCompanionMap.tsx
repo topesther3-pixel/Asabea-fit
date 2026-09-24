@@ -34,6 +34,8 @@ interface LiveCompanionMapProps {
   gpsStatus: 'idle' | 'active' | 'searching' | 'interrupted';
   targetMinutes?: number | null;
   targetDistanceKm?: number;
+  userFirstName?: string;
+  personalizedBrand?: string;
   onPauseToggle?: () => void;
   onFinish?: () => void;
   onSimulatedPoint?: (point: RoutePoint, simulatedDeltaKm: number) => void;
@@ -52,6 +54,8 @@ export const LiveCompanionMap: React.FC<LiveCompanionMapProps> = ({
   gpsStatus,
   targetMinutes,
   targetDistanceKm = 2.0,
+  userFirstName,
+  personalizedBrand,
   onPauseToggle,
   onFinish,
   onSimulatedPoint
@@ -282,12 +286,13 @@ export const LiveCompanionMap: React.FC<LiveCompanionMapProps> = ({
   }, []);
 
   // Format mode title based on workout mode
+  const companionDisplayName = userFirstName || 'FIT';
   const modeTitle =
     workoutType === 'WALK'
-      ? 'Walking with Asabea 💗'
+      ? `Walking with ${companionDisplayName} 💗`
       : workoutType === 'JOG'
-      ? 'Jogging with Asabea 💗'
-      : 'Running with Asabea 💗';
+      ? `Jogging with ${companionDisplayName} 💗`
+      : `Running with ${companionDisplayName} 💗`;
 
   return (
     <div className="rounded-3xl bg-white border border-[#FCECEF] shadow-sm overflow-hidden text-[#252525]">
@@ -562,7 +567,7 @@ export const LiveCompanionMap: React.FC<LiveCompanionMapProps> = ({
               Connecting GPS & Walking Route
             </h4>
             <p className="text-xs text-gray-500 max-w-xs mt-1">
-              Acquiring high-accuracy satellite lock. Start walking and Asabea will travel with you along your route!
+              Acquiring high-accuracy satellite lock. Start walking and your companion will travel with you along your route!
             </p>
 
             <div className="mt-4 flex items-center gap-2">
@@ -587,7 +592,7 @@ export const LiveCompanionMap: React.FC<LiveCompanionMapProps> = ({
               <span className="w-2 h-2 rounded-full bg-[#3B82F6]" /> You
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#E96A8D]" /> Asabea
+              <span className="w-2 h-2 rounded-full bg-[#E96A8D]" /> Companion
             </span>
           </div>
 
@@ -644,7 +649,7 @@ export const LiveCompanionMap: React.FC<LiveCompanionMapProps> = ({
               Workout Complete! 🎉
             </h4>
             <p className="text-xs text-[#E96A8D] font-bold mt-0.5">
-              Fantastic effort with Asabea! Small steps, big results.
+              Fantastic effort! Small steps, big results.
             </p>
             <div className="mt-3 flex justify-center gap-2">
               <button
@@ -675,8 +680,8 @@ export const LiveCompanionMap: React.FC<LiveCompanionMapProps> = ({
             </span>
             <span className="text-[10px] text-gray-500">
               {isPaused
-                ? 'Asabea is resting. Tap resume to continue.'
-                : 'Asabea follows your real GPS movement.'}
+                ? 'Companion is resting. Tap resume to continue.'
+                : 'Companion follows your real GPS movement.'}
             </span>
           </div>
         </div>
